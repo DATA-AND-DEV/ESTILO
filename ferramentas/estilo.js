@@ -8,11 +8,14 @@
 // produto declara, e não família livre — a escala de tipo daqui é medida, e uma
 // família qualquer moveria tamanho, entrelinha e contraste de uma vez.
 //
-// Arredondamento e brilho são **recusados pelo produto**, e não pendentes: a
-// marca dele proíbe raio e sombra, e a API de tema devolve a razão quando
-// alguém pede. Este MOD pergunta uma vez, mostra a resposta que veio, e
-// preserva os valores no servidor — eles são de quem os salvou, e zerá-los por
-// não poder aplicá-los seria apagar a escolha de outra pessoa.
+// Arredondamento e brilho entraram junto. O produto abre em canto reto e sem
+// sombra — é a estética dele —, e `specs/07-estetica.md` nomeia a exceção: um
+// tema de servidor pode levantar os dois, e o efeito vale só naquela sessão.
+//
+// O arredondamento é inteiro de 0 a 24 dos dois lados: este servidor já
+// conferia o intervalo antes de o produto saber aplicá-lo, e agora os dois
+// concordam. O brilho é sim ou não, e a sombra que ele liga é montada pelo
+// produto — este MOD manda `true`, e nunca um `box-shadow`.
 
 const { texto, campo, escolha, botao, linha, request, iniciar } =
   interfaceMod('seele/estilo', 'ESTILO');
@@ -37,6 +40,14 @@ const FONTES = [
   { valor: 'sans', dentro: 'SEM SERIFA' },
 ];
 
+/** O arredondamento: o mesmo intervalo que o servidor e o produto conferem. */
+const RAIOS = [0, 2, 4, 8, 12, 16, 24].map(n => ({ valor: String(n), dentro: n === 0 ? 'RETO' : `${n} PX` }));
+
+const BRILHOS = [
+  { valor: 'nao', dentro: 'SEM BRILHO' },
+  { valor: 'sim', dentro: 'COM BRILHO' },
+];
+
 /** O que o produto sabe aplicar, a partir do que o servidor guarda. */
 const paraOProduto = tema => ({
   fundo: tema.background,
@@ -47,6 +58,11 @@ const paraOProduto = tema => ({
   borda: tema.border,
   densidade: tema.density === 'comfortable' ? 'confortavel' : 'compacta',
   fonte: tema.font === 'sans' ? 'sans' : 'mono',
+  // Número e booleano, e não texto: a API confere o intervalo e o tipo, e é
+  // ela quem escreve `px` e monta a sombra. Mandar `'8px'` seria mandar uma
+  // string para uma porta que aceita número, e a recusa seria nossa.
+  arredondamento: Number(tema.radius) || 0,
+  brilho: tema.glow === true,
 });
 
 let aplicado = null;
@@ -89,6 +105,8 @@ function desenhoDoEstado() {
       ...CORES.map(([chave, rotulo]) => texto(rotulo + ': ' + tema[chave])),
       texto('Densidade: ' + (tema.density === 'comfortable' ? 'confortável' : 'compacta')),
       texto('Fonte: ' + (tema.font === 'sans' ? 'sem serifa' : 'monoespaçada')),
+      texto('Arredondamento: ' + (tema.radius ? tema.radius + ' px' : 'reto')),
+      texto('Brilho: ' + (tema.glow ? 'ligado' : 'desligado')),
       texto('Revisão ' + ultimo.revision + ' · só quem administra o servidor edita.'),
     ];
   }
@@ -100,6 +118,8 @@ function desenhoDoEstado() {
     ...CORES.map(([chave, rotulo]) => campo(chave, rotulo, tema[chave])),
     escolha('density', 'DENSIDADE', tema.density, DENSIDADES),
     escolha('font', 'FONTE', tema.font, FONTES),
+    escolha('radius', 'ARREDONDAMENTO', String(tema.radius ?? 0), RAIOS),
+    escolha('glow', 'BRILHO', tema.glow ? 'sim' : 'nao', BRILHOS),
     linha([
       botao('gravar', mudou ? 'GRAVAR' : 'GRAVADO', !mudou),
       botao('descartar', 'DESCARTAR', !mudou),
@@ -170,7 +190,14 @@ iniciar(
     if (evento.nome === 'campo' || evento.nome === 'escolha') {
       // O rascunho nasce do que o servidor tem, e daí em diante é dele.
       rascunho = { ...(rascunho ?? ultimo?.theme ?? {}) };
-      rascunho[evento.chave] = evento.valor;
+      // **A escolha devolve texto, e o servidor guarda número e booleano.**
+      // Converter aqui, e não na gravação, é o que faz a tela mostrar o que
+      // vai ser gravado: um `'8'` no rascunho reapareceria na comparação com
+      // o que o servidor tem e diria «mudou» para sempre.
+      rascunho[evento.chave] =
+        evento.chave === 'radius' ? Number(evento.valor) || 0
+          : evento.chave === 'glow' ? evento.valor === 'sim'
+            : evento.valor;
       aviso = '';
       repintar(desenhoDoEstado());
       return null;
