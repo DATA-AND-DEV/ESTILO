@@ -1,146 +1,273 @@
-/* Gerado por ferramentas/build.mjs. Sem dependências. */
-(()=>{
+/* Gerado por ferramentas/build.mjs. API 3. */
+(() => {
 "use strict";
-/* Shared at build time only. Each distributed MOD contains its own copy. */
-function interfaceMod(id,title,subtitle) {
-  const api=globalThis.SeeleMods;
-  if (!api) throw new Error('Este MOD exige a API 2 do SEELE.');
-  const prefix=id.replace('/','-');
-  const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
-  let sheet,releaseStyles;const inserted=[];
-  try{sheet=new CSSStyleSheet();document.adoptedStyleSheets=[...document.adoptedStyleSheets,sheet];releaseStyles=()=>{document.adoptedStyleSheets=document.adoptedStyleSheets.filter(s=>s!==sheet);};}
-  catch{sheet=[...document.styleSheets].find(s=>{try{return Boolean(s.cssRules);}catch{return false;}});if(!sheet)throw new Error('Nenhuma folha CSS disponível.');releaseStyles=()=>{for(const rule of inserted){const i=[...sheet.cssRules].indexOf(rule);if(i>=0)sheet.deleteRule(i);}};}
-  const css=rules=>{let depth=0,start=0;for(let i=0;i<rules.length;i++){if(rules[i]==='{')depth++;if(rules[i]==='}'&&--depth===0){const n=sheet.insertRule(rules.slice(start,i+1),sheet.cssRules.length);inserted.push(sheet.cssRules[n]);start=i+1;}}};
-  css(`.${prefix}{--sm-bg:var(--seele-negro-absoluto,#050403);--sm-panel:var(--seele-negro-painel,#0a0806);--sm-ink:var(--seele-osso,#eae3cf);--sm-muted:var(--seele-rotulo-painel,#908574);--sm-accent:var(--seele-laranja-nerv,#f2521f);--sm-line:var(--seele-linha-forte,#3a322a);color:var(--sm-ink);font:var(--seele-t-dado,13px)/1.5 var(--seele-mono,"IBM Plex Mono",monospace)}`);
-  css(`dialog.${prefix}{background:var(--sm-bg);width:min(920px,calc(100vw - 32px));max-height:calc(100vh - 64px);padding:0;border:1px solid var(--sm-accent);border-radius:0;overflow:auto;box-shadow:none;color-scheme:dark;scrollbar-color:var(--sm-line) var(--sm-bg);scrollbar-width:thin}`);
-  css(`dialog.${prefix}::-webkit-scrollbar{width:8px}dialog.${prefix}::-webkit-scrollbar-thumb{background:var(--sm-line)}dialog.${prefix}::-webkit-scrollbar-track{background:var(--sm-bg)}`);
-  css(`dialog.${prefix}::backdrop{background:rgba(5,4,3,.82)}`);
-  css(`.${prefix} header{display:flex;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid var(--sm-line);position:sticky;top:0;background:var(--sm-panel);z-index:3}`);
-  css(`.${prefix} h1,.${prefix} h2{font-family:var(--seele-display,"Saira Condensed",sans-serif);font-weight:900;text-transform:uppercase;letter-spacing:.06em}.${prefix} h1{font-size:28px;line-height:1.2;margin:0;color:var(--sm-accent)}.${prefix} h2{font-size:18px;margin:0 0 16px}`);
-  css(`.${prefix} p{margin:8px 0;color:var(--sm-muted)}.${prefix} .sm-body{padding:24px}.${prefix} .sm-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}`);
-  css(`.${prefix} button,.${prefix} input,.${prefix} select,.${prefix} textarea{font:inherit;color:var(--sm-ink);background:var(--sm-panel);border:1px solid var(--sm-line);border-radius:0;padding:8px 16px;max-width:100%;box-sizing:border-box}`);
-  css(`.${prefix} button{cursor:pointer}.${prefix} button:disabled{opacity:.5;cursor:wait}.${prefix} button:hover:not(:disabled){border-color:var(--sm-accent)}.${prefix} button:focus-visible,.${prefix} input:focus-visible,.${prefix} select:focus-visible,.${prefix} textarea:focus-visible{outline:3px solid var(--sm-accent);outline-offset:3px}`);
-  css(`.${prefix} button{text-transform:uppercase;letter-spacing:.04em}.${prefix} .sm-primary{background:var(--sm-accent);color:var(--sm-bg);font-weight:700}.${prefix} label{display:grid;gap:8px;margin-bottom:16px;color:var(--sm-muted)}.${prefix} input:not([type=checkbox]),.${prefix} select,.${prefix} textarea{width:100%}.${prefix} input[type=color]{height:40px;padding:4px}.${prefix} textarea{min-height:96px;resize:vertical}.${prefix} .sm-check{display:flex;align-items:center;gap:8px}`);
-  css(`.${prefix} .sm-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.${prefix} .sm-colors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.${prefix} .sm-note{font-size:var(--seele-t-rotulo,10px)}.${prefix} .sm-status{padding:16px 24px;border-top:1px solid var(--sm-line);min-height:24px;white-space:pre-wrap}.${prefix} .sm-error{color:var(--seele-vermelho-alerta,#ff1a1a)}`);
-  css(`.${prefix}-launcher{padding:8px 16px;display:block}.${prefix}-launcher button{width:100%;padding:8px 16px;text-align:left;background:transparent;color:var(--seele-osso,#eae3cf);border:0;border-left:2px solid var(--seele-laranja-nerv,#f2521f);border-radius:0;cursor:pointer;font:700 var(--seele-t-dado,13px) var(--seele-mono,"IBM Plex Mono",monospace);text-transform:uppercase;letter-spacing:.06em}`);
-  css(`@media(max-width:650px){.${prefix} .sm-grid{grid-template-columns:1fr}.${prefix} .sm-body,.${prefix} header{padding:16px}}`);
-  const launcher=el('section',undefined,prefix+'-launcher');
-  const launch=el('button',title);launch.type='button';launch.setAttribute('aria-haspopup','dialog');launcher.append(launch);
-  const dialog=el('dialog',undefined,prefix);dialog.setAttribute('aria-label',title);
-  const header=el('header'),heading=el('div');heading.style.flex='1';heading.append(el('h1',title),el('p',subtitle));
-  const close=el('button','Fechar');close.type='button';header.append(heading,close);
-  const body=el('div',undefined,'sm-body'),status=el('div','Conectando…','sm-status');status.setAttribute('role','status');
-  dialog.append(header,body,status);document.body.append(dialog);
-  let disposed=false,busy=false,snapshot=null,channel=null,timer,opening=false,polling=false;
-  const disposers=[];
-  const message=(text,error=false)=>{status.textContent=text;status.classList.toggle('sm-error',error);};
-  const field=(label,type,value,options={})=>{
-    const wrap=el('label',label),input=el(type==='textarea'?'textarea':type==='select'?'select':'input');
-    if (input.tagName==='INPUT') input.type=type;
-    if(type==='checkbox')wrap.className='sm-check';
-    if (options.values) for (const [value,title] of options.values) {const opt=el('option',title);opt.value=value;input.append(opt);}
-    if (type==='checkbox') input.checked=Boolean(value);else input.value=String(value??'');
-    for(const [key,val] of Object.entries(options)) if(key!=='values') input.setAttribute(key,String(val));
-    wrap.append(input);return {wrap,input};
+// Executado exclusivamente no executor do MOD. Cada pacote inclui sua cópia.
+//
+// A casca dos MODs oficiais: o que os três fazem igual, num lugar só.
+//
+// # O que mudou com a API 3 completa
+//
+// A versão anterior sabia **redesenhar por relógio** e nada mais: perguntava ao
+// servidor a cada quatro segundos e mostrava a resposta. Um MOD assim é uma tela
+// de leitura, e foi nisso que os três oficiais viraram depois da migração.
+//
+// Agora ela sabe três coisas a mais:
+//
+// - **receber evento.** `SeeleUI.aoEvento` traz o que a pessoa fez — digitou,
+//   escolheu, apertou, arrastou — sem que o MOD tenha perguntado;
+// - **redesenhar na hora.** Um evento muda o estado local e a tela acompanha
+//   imediatamente, em vez de esperar o próximo relógio;
+// - **guardar rascunho.** O que está sendo editado **não** é sobrescrito pela
+//   resposta do servidor. Sem isso, digitar durante um ciclo de quatro segundos
+//   perderia o que foi digitado — e o produto preservar o foco não bastaria: o
+//   foco ficaria numa caixa cujo valor o próprio MOD acabou de trocar.
+function interfaceMod(id, titulo, intervalo = 4000) {
+  const api = globalThis.SeeleMods, ui = globalThis.SeeleUI;
+  if (!api || !ui) throw new Error('Este MOD exige a API 3 do SEELE.');
+
+  const texto = dentro => ({ forma: 'texto', dentro: String(dentro ?? '') });
+  const cabecalho = dentro => ({ forma: 'titulo', dentro: String(dentro ?? '') });
+  const lista = itens => ({ forma: 'lista', dentro: itens.map(dentro => ({ forma: 'item', dentro: String(dentro) })) });
+  const campo = (chave, rotulo, valor) => ({ forma: 'campo', chave, rotulo, valor: String(valor ?? '') });
+  const escolha = (chave, rotulo, valor, opcoes) => ({ forma: 'escolha', chave, rotulo, valor: String(valor ?? ''), opcoes });
+  const botao = (chave, dentro, desligado = false) => ({ forma: 'botao', chave, dentro: String(dentro), desligado });
+  const linha = dentro => ({ forma: 'linha', dentro });
+
+  const canalDe = snapshot => {
+    const id = snapshot.open_channel ?? snapshot.channels?.[0]?.id;
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
   };
-  const button=(label,action,primary=false)=>{const b=el('button',label,primary?'sm-primary':'');b.type='button';b.onclick=()=>run(action);return b;};
-  async function request(payload) {
-    if(disposed || channel===null) throw new Error('Entre em um servidor com um canal de texto.');
-    const response=await api.request(id,channel,payload);
-    if(disposed) throw new Error('O MOD foi descarregado.');
-    if(!response.ok) throw new Error(response.error || 'O servidor recusou a operação.');
-    return response;
+
+  async function request(canal, valor) {
+    const resposta = await api.request(id, canal, valor);
+    if (!resposta?.ok) throw new Error(resposta?.error || 'O servidor recusou a consulta.');
+    return resposta;
   }
-  async function run(action) {
-    if(busy || disposed)return;busy=true;
-    const buttons=[...dialog.querySelectorAll('button')];const previous=buttons.map(b=>b.disabled);buttons.forEach(b=>b.disabled=true);
-    try{await action();}catch(e){message(e.message || String(e),true);}finally{busy=false;buttons.forEach((b,i)=>b.disabled=previous[i]);}
-  }
-  function hide(){dialog.close();launch.focus();ui.onClose?.();}
-  close.onclick=hide;dialog.addEventListener('cancel',()=>ui.onClose?.());
-  const ui={id,prefix,el,css,field,button,body,dialog,message,request,run,disposers,get snapshot(){return snapshot;},get disposed(){return disposed;},get busy(){return busy;},get channel(){return channel;},onPoll:null,onOpen:null,onClose:null};
-  async function poll(){
-    if(disposed || busy || polling)return;polling=true;
-    try{
-      snapshot=await api.snapshot();if(disposed)return;
-      channel=Number(snapshot.open_channel || snapshot.channels?.[0]?.id) || null;
-      const host=document.querySelector('#tela-sessao .painel-canais .canais-rolagem');
-      if(host && launcher.parentNode!==host)host.append(launcher);
-      launcher.hidden=!channel;
-      if(channel)await ui.onPoll?.();
-    }catch(e){if(dialog.open)message(e.message || 'Sem conexão.',true);}finally{polling=false;}
-  }
-  launch.onclick=async()=>{
-    if(opening)return;opening=true;
-    try{await poll();if(disposed)return;dialog.showModal();await run(()=>ui.onOpen?.());}finally{opening=false;}
+
+  // O último canal visto, para um evento saber a quem falar sem perguntar de
+  // novo: `snapshot` é uma ida à ponte, e um arraste não pode pagar uma por
+  // quadro.
+  let canalAtual = null;
+  let pintando = false;
+
+  const desenhar = async partes => {
+    // Uma pintura de cada vez: dois `regiao` em voo chegariam fora de ordem, e
+    // o desenho de trás apagaria o da frente.
+    if (pintando) return;
+    pintando = true;
+    try {
+      await ui.regiao([cabecalho(titulo), ...partes]);
+    } finally {
+      pintando = false;
+    }
   };
-  function dispose(event){
-    if(event.detail!==id)return;disposed=true;clearInterval(timer);dialog.close();dialog.remove();launcher.remove();
-    for(const fn of disposers)fn();releaseStyles();
-    globalThis.removeEventListener('seele-mod-unload',dispose);
+
+  function iniciar(consultar, semCanal = async () => {}, aoEvento = null) {
+    /**
+     * Redesenha com o que o estado local diz **agora**.
+     *
+     * É o que um evento chama. Ele não vai ao servidor: quem digita espera a
+     * letra aparecer, e não esperar a rede.
+     */
+    const repintar = partes => { void desenhar(partes); };
+
+    if (aoEvento) {
+      ui.aoEvento(evento => {
+        // O erro do MOD fica com o MOD, e é dito na região em vez de sumir.
+        try {
+          const talvez = aoEvento(evento, canalAtual, repintar);
+          if (talvez && typeof talvez.catch === 'function') {
+            talvez.catch(erro => void desenhar([texto('Falhou: ' + (erro.message || String(erro)))]));
+          }
+        } catch (erro) {
+          void desenhar([texto('Falhou: ' + (erro.message || String(erro)))]);
+        }
+      });
+    }
+
+    async function atualizar() {
+      try {
+        const snapshot = await api.snapshot(), canal = canalDe(snapshot);
+        canalAtual = canal;
+        if (canal === null) {
+          await semCanal();
+          await desenhar([texto('Entre em um servidor com um canal de texto.')]);
+        } else {
+          const resultado = await consultar(snapshot, canal);
+          // Não apresente uma resposta do canal anterior após a navegação.
+          if (canalDe(await api.snapshot()) === canal) await desenhar(resultado);
+          else await desenhar([texto('Canal alterado. Atualizando…')]);
+        }
+      } catch (erro) {
+        try { await desenhar([texto('Não foi possível atualizar: ' + (erro.message || String(erro)))]); }
+        catch (falha) { console.error(titulo + ': ' + (falha.message || String(falha))); }
+      } finally {
+        // Agenda depois de concluir: nunca sobrepõe consultas nem repete
+        // escritas. O SEELE encerra o executor e seus temporizadores ao sair.
+        setTimeout(atualizar, intervalo);
+      }
+    }
+    void atualizar();
   }
-  globalThis.addEventListener('seele-mod-unload',dispose);
-  ui.start=()=>{poll();timer=setInterval(poll,4000);};
-  return ui;
+
+  return { texto, cabecalho, lista, campo, escolha, botao, linha, request, iniciar, desenhar };
 }
 
-const ui=interfaceMod('seele/estilo','Estilo do servidor','Uma identidade visual para todo mundo que entra.');
-const palettes={
-  'SEELE':{accent:'#f2521f',background:'#050403',panel:'#0a0806',text:'#eae3cf',muted:'#908574',border:'#3a322a'},
-  'Aurora':{accent:'#a78bfa',background:'#10121b',panel:'#191d2b',text:'#f2f4ff',muted:'#b3bdd4',border:'#424b65'},
-  'Oceano':{accent:'#67e8f9',background:'#071821',panel:'#102632',text:'#e4f9ff',muted:'#a4c7d4',border:'#365868'},
-  'Jardim':{accent:'#86efac',background:'#0e1914',panel:'#172b20',text:'#edfff1',muted:'#a9c7b2',border:'#3c5945'},
-  'Brasa':{accent:'#ffba85',background:'#1b1210',panel:'#2b1e18',text:'#fff3e8',muted:'#d4b7a3',border:'#6c4b3a'}
-};
-const tokens={accent:'--seele-laranja-nerv',background:'--seele-negro-absoluto',panel:'--seele-negro-painel',text:'--seele-osso',muted:'--seele-osso-apagado',border:'--seele-linha'};
-const original=new Map();let state=null,draft=null,fields={},revision=null;
-function setToken(name,value){const style=document.documentElement.style;if(!original.has(name))original.set(name,[style.getPropertyValue(name),style.getPropertyPriority(name)]);style.setProperty(name,value);}
-function restore(){for(const [name,[value,priority]] of original){if(value)document.documentElement.style.setProperty(name,value,priority);else document.documentElement.style.removeProperty(name);}original.clear();document.documentElement.classList.remove('seele-estilo-active');}
-ui.disposers.push(restore);
-ui.css(`.seele-estilo-active #tela-sessao .pessoa,.seele-estilo-active #tela-sessao .sala,.seele-estilo-active #tela-sessao button{border-radius:var(--estilo-radius,0px)}`);
-ui.css(`.seele-estilo-active #tela-sessao .pessoa{padding:var(--estilo-padding,12px);box-shadow:var(--estilo-glow,none)}`);
-function apply(value,enabled=true){
-  if(!enabled){restore();return;}
-  document.documentElement.classList.add('seele-estilo-active');
-  for(const [key,token] of Object.entries(tokens))setToken(token,value[key]);
-  setToken('--seele-rotulo-painel',value.muted);setToken('--seele-linha-forte',value.border);
-  setToken('--seele-laranja-fraco',value.panel);setToken('--seele-laranja-carga',value.panel);
-  setToken('--estilo-radius',value.radius+'px');setToken('--estilo-padding',value.density==='compact'?'6px':'14px');
-  setToken('--estilo-glow',value.glow?'0 0 18px '+value.accent+'22':'none');
-  setToken('--seele-mono',value.font==='sans'?'system-ui, sans-serif':'"IBM Plex Mono", monospace');
+// O ESTILO: o tema do servidor, **escolhido aqui** e aplicado na sessão.
+//
+// A versão anterior mostrava as quatro cores que conseguia aplicar e uma linha
+// dizendo que o resto «aguarda suporte do SEELE». A API 3 completa oferece seis
+// cores e a densidade, e quem administra edita e grava daqui.
+//
+// O que continua fora está escrito na emenda de 19/09 do ADR 0049, com a razão:
+// a família de tipo mexe na escala medida do produto, e arredondamento e brilho
+// não têm token. Eles são **preservados** no servidor — este MOD os devolve como
+// vieram, e não os zera por não saber editá-los.
+
+const { texto, campo, escolha, botao, linha, request, iniciar } =
+  interfaceMod('seele/estilo', 'ESTILO');
+
+/** As seis cores, na ordem em que fazem sentido de cima para baixo. */
+const CORES = [
+  ['background', 'FUNDO', 'fundo'],
+  ['panel', 'PAINEL', 'painel'],
+  ['text', 'TEXTO', 'texto'],
+  ['muted', 'TEXTO APAGADO', 'apagado'],
+  ['accent', 'DESTAQUE', 'acento'],
+  ['border', 'BORDA', 'borda'],
+];
+
+const DENSIDADES = [
+  { valor: 'compact', dentro: 'COMPACTA' },
+  { valor: 'comfortable', dentro: 'CONFORTÁVEL' },
+];
+
+/** O que o produto sabe aplicar, a partir do que o servidor guarda. */
+const paraOProduto = tema => ({
+  fundo: tema.background,
+  painel: tema.panel,
+  texto: tema.text,
+  apagado: tema.muted,
+  acento: tema.accent,
+  borda: tema.border,
+  densidade: tema.density === 'comfortable' ? 'confortavel' : 'compacta',
+});
+
+let aplicado = null;
+async function aplicar(valores) {
+  const assinatura = JSON.stringify(valores);
+  if (assinatura === aplicado) return;
+  // Só confirme o estado depois que o produto aceitar cores, posse e contraste.
+  await SeeleUI.tema(valores);
+  aplicado = assinatura;
 }
-function edit(){
-  draft={...state.theme};revision=state.revision;fields={};ui.body.replaceChildren();
-  const grid=ui.el('div',undefined,'sm-grid'),form=ui.el('div'),preview=ui.el('div');
-  const presets=ui.el('div',undefined,'sm-actions');
-  for(const [name,palette] of Object.entries(palettes))presets.append(ui.button(name,()=>{draft={...draft,...palette};for(const key of Object.keys(palette))fields[key].value=draft[key];paint();}));
-  form.append(ui.el('h2','Paletas'),presets,ui.el('p','Escolha uma base e ajuste os detalhes.'));
-  const colors=ui.el('div',undefined,'sm-colors');
-  for(const [key,label] of Object.entries({accent:'Destaque',background:'Fundo',panel:'Painéis',text:'Texto',muted:'Texto secundário',border:'Bordas'})){
-    const f=ui.field(label,'color',draft[key]);fields[key]=f.input;f.input.oninput=()=>{draft[key]=f.input.value;paint();};colors.append(f.wrap);
+
+/**
+ * O que está sendo editado, ou nada quando ninguém está editando.
+ *
+ * **Separado do que o servidor diz**, e é essa separação que faz a consulta de
+ * quatro em quatro segundos não apagar o que está sendo digitado. Sem ela, o
+ * produto preservar o foco não bastaria: o foco ficaria numa caixa cujo valor
+ * este MOD acabou de trocar.
+ */
+let rascunho = null;
+let ultimo = null;
+let aviso = '';
+
+/** O tema que a tela mostra: o rascunho, se há um; senão, o do servidor. */
+const emEdicao = () => rascunho ?? ultimo?.theme ?? null;
+
+function desenhoDoEstado() {
+  if (!ultimo) return [texto('Consultando o tema do servidor…')];
+  const tema = emEdicao();
+  const podeEditar = ultimo.canEdit === true;
+  const mudou = rascunho !== null && JSON.stringify(rascunho) !== JSON.stringify(ultimo.theme);
+
+  if (!podeEditar) {
+    // **Não é um aviso de indisponibilidade**: é a permissão do servidor dita
+    // como ela é. Quem não administra vê o tema, e vê que não o edita.
+    return [
+      texto(ultimo.enabled
+        ? 'Tema do servidor, aplicado somente nesta sessão.'
+        : 'Tema compartilhado desativado. Aparência pessoal preservada.'),
+      ...CORES.map(([chave, rotulo]) => texto(rotulo + ': ' + tema[chave])),
+      texto('Densidade: ' + (tema.density === 'comfortable' ? 'confortável' : 'compacta')),
+      texto('Revisão ' + ultimo.revision + ' · só quem administra o servidor edita.'),
+    ];
   }
-  form.append(colors);
-  for(const [key,label,type,options] of [
-    ['radius','Arredondamento','range',{min:0,max:24}],
-    ['density','Espaçamento','select',{values:[['comfortable','Confortável'],['compact','Compacto']]}],
-    ['font','Tipografia dos dados','select',{values:[['sans','Moderna'],['mono','Monoespaçada']]}],
-    ['glow','Brilho suave nos cartões','checkbox',{}]
-  ]){const f=ui.field(label,type,draft[key],options);f.input.oninput=()=>{draft[key]=type==='checkbox'?f.input.checked:type==='range'?Number(f.input.value):f.input.value;paint();};form.append(f.wrap);}
-  preview.append(ui.el('h2','Prévia'),ui.el('p','Só será aplicada ao servidor quando você salvar.'));
-  const sample=ui.el('div');sample.style.padding='24px';sample.append(ui.el('h2','Seu servidor, do seu jeito'),ui.el('p','Uma conversa começa com quem está aqui.'),ui.el('button','Destaque'));
-  preview.append(sample);grid.append(form,preview);ui.body.append(grid);
-  function paint(){sample.style.background=draft.panel;sample.style.color=draft.text;sample.style.border='1px solid '+draft.border;sample.style.borderRadius=draft.radius+'px';sample.querySelector('p').style.color=draft.muted;const b=sample.querySelector('button');b.style.background=draft.accent;b.style.color=draft.background;}
-  paint();
-  const actions=ui.el('div',undefined,'sm-actions');
-  if(state.canEdit){
-    actions.append(ui.button('Salvar para o servidor',async()=>{state=await ui.request({op:'save',revision,theme:draft});apply(state.theme,state.enabled);edit();ui.message('Tema salvo. Os participantes recebem a atualização em até 4 segundos.');},true));
-    actions.append(ui.button('Restaurar aparência padrão',async()=>{state=await ui.request({op:'reset',revision});restore();edit();ui.message('Aparência padrão restaurada.');}));
-  }else{form.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);actions.append(ui.el('p','Somente o host ou administrador pode salvar alterações.'));}
-  actions.append(ui.button('Recarregar',async()=>{state=await ui.request({op:'view'});edit();ui.message('Tema recarregado.');}));
-  ui.body.append(actions);
+
+  return [
+    texto(ultimo.enabled
+      ? 'Tema do servidor, aplicado somente nesta sessão.'
+      : 'Tema compartilhado desativado. Edite e grave para ligá-lo.'),
+    ...CORES.map(([chave, rotulo]) => campo(chave, rotulo, tema[chave])),
+    escolha('density', 'DENSIDADE', tema.density, DENSIDADES),
+    linha([
+      botao('gravar', mudou ? 'GRAVAR' : 'GRAVADO', !mudou),
+      botao('descartar', 'DESCARTAR', !mudou),
+      botao('restaurar', 'RESTAURAR PADRÃO'),
+    ]),
+    texto(aviso || ('Revisão ' + ultimo.revision)),
+  ];
 }
-ui.onPoll=async()=>{const next=await ui.request({op:'view'});if(state && next.revision<state.revision)return;if(state?.revision!==next.revision || state?.enabled!==next.enabled)apply(next.theme,next.enabled);state=next;};
-ui.onOpen=async()=>{state=await ui.request({op:'view'});edit();ui.message(state.enabled?'Tema compartilhado ativo.':'A aparência padrão está ativa.');};
-ui.start();
+
+async function gravar(canal) {
+  const tema = emEdicao();
+  if (!tema) return;
+  aviso = 'gravando…';
+  // O servidor confere cor, contraste e revisão. O que este MOD não edita vai
+  // de volta como veio: zerá-lo seria apagar a escolha de outra pessoa por não
+  // saber mostrá-la.
+  const resposta = await request(canal, { op: 'save', revision: ultimo.revision, theme: tema });
+  ultimo = resposta;
+  rascunho = null;
+  aviso = 'gravado';
+  await aplicar(paraOProduto(resposta.theme));
+}
+
+async function restaurar(canal) {
+  aviso = 'restaurando…';
+  const resposta = await request(canal, { op: 'reset', revision: ultimo.revision });
+  ultimo = resposta;
+  rascunho = null;
+  aviso = 'restaurado';
+  await aplicar({});
+}
+
+iniciar(
+  async (snapshot, canal) => {
+    const estado = await request(canal, { op: 'view' });
+    ultimo = estado;
+    await aplicar(estado.enabled ? paraOProduto(estado.theme) : {});
+    return desenhoDoEstado();
+  },
+  () => aplicar({}),
+  (evento, canal, repintar) => {
+    if (evento.nome === 'campo' || evento.nome === 'escolha') {
+      // O rascunho nasce do que o servidor tem, e daí em diante é dele.
+      rascunho = { ...(rascunho ?? ultimo?.theme ?? {}) };
+      rascunho[evento.chave] = evento.valor;
+      aviso = '';
+      repintar(desenhoDoEstado());
+      return null;
+    }
+    if (evento.nome !== 'botao' || canal === null) return null;
+    if (evento.chave === 'descartar') {
+      rascunho = null;
+      aviso = '';
+      repintar(desenhoDoEstado());
+      return null;
+    }
+    const feito = evento.chave === 'gravar' ? gravar(canal)
+      : evento.chave === 'restaurar' ? restaurar(canal)
+        : null;
+    // A recusa do servidor — contraste, permissão, revisão trocada — vira a
+    // linha de aviso desta região, e não um erro que ninguém lê.
+    return feito?.then(
+      () => repintar(desenhoDoEstado()),
+      erro => { aviso = erro.message || String(erro); repintar(desenhoDoEstado()); },
+    ) ?? null;
+  },
+);
 
 })();
