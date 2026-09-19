@@ -1,11 +1,12 @@
 {
   "schema": 1,
   "id": "seele/estilo",
-  "version": "1.0.1",
-  "api": 2,
+  "version": "2.0.0",
+  "api": 3,
   "repo": "https://github.com/DATA-AND-DEV/ESTILO",
   "reach": [
-    "dom",
+    "regiao",
+    "tema da sessao",
     "tema do servidor"
   ],
   "client": "cliente/main.js",

@@ -1,11 +1,16 @@
 {
   "name": "seele-mod-estilo",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "build": "node ferramentas/build.mjs",
     "test": "node --test test/*.test.cjs",
     "check": "node --check cliente/main.js && node --check servidor/main.js",
-    "preview": "node ferramentas/preview.cjs"
+    "preview": "node ferramentas/preview.cjs",
+    "test:ui": "node ferramentas/test-ui.cjs",
+    "package": "node ferramentas/package.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
   }
 }

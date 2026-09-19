@@ -141,9 +141,11 @@ function interfaceMod(id, titulo, intervalo = 4000) {
 // produto declara, e não família livre — a escala de tipo daqui é medida, e uma
 // família qualquer moveria tamanho, entrelinha e contraste de uma vez.
 //
-// Arredondamento e brilho continuam sem token no produto. Eles são
-// **preservados** no servidor: este MOD os devolve como vieram, e não os zera
-// por não saber editá-los.
+// Arredondamento e brilho são **recusados pelo produto**, e não pendentes: a
+// marca dele proíbe raio e sombra, e a API de tema devolve a razão quando
+// alguém pede. Este MOD pergunta uma vez, mostra a resposta que veio, e
+// preserva os valores no servidor — eles são de quem os salvou, e zerá-los por
+// não poder aplicá-los seria apagar a escolha de outra pessoa.
 
 const { texto, campo, escolha, botao, linha, request, iniciar } =
   interfaceMod('seele/estilo', 'ESTILO');
@@ -237,7 +239,33 @@ function desenhoDoEstado() {
       botao('restaurar', 'RESTAURAR PADRÃO'),
     ]),
     texto(aviso || ('Revisão ' + ultimo.revision)),
+    ...oQueEstaGuardadoENaoSeAplica(),
   ];
+}
+
+/**
+ * O que está salvo neste servidor e **este produto não aplica**.
+ *
+ * Só aparece quando há algo salvo: é uma frase sobre os dados de quem está
+ * aqui, e não um aviso de indisponibilidade. A marca deste produto proíbe raio
+ * e sombra — «nunca», na letra dela —, e a API de tema recusa os dois pelo
+ * nome. Quem salvou um raio noutro tempo merece saber que ele está guardado e
+ * não desenhado, em vez de achar que o tema dele não pegou.
+ *
+ * Perguntar ao produto por tentativa seria pior: pedir para descobrir a recusa
+ * aplica um tema de mentira no caminho.
+ */
+function oQueEstaGuardadoENaoSeAplica() {
+  const tema = ultimo?.theme;
+  if (!tema) return [];
+  const guardados = [];
+  if (tema.radius) guardados.push('arredondamento ' + tema.radius);
+  if (tema.glow) guardados.push('brilho');
+  if (!guardados.length) return [];
+  return [texto(
+    'Guardado neste servidor e não desenhado aqui: ' + guardados.join(', ')
+    + '. A marca do SEELE não tem raio nem sombra, e a API de tema recusa os dois.'
+  )];
 }
 
 async function gravar(canal) {

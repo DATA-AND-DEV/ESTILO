@@ -1,9 +1,4 @@
-import {readFileSync,writeFileSync} from 'node:fs';
-import {fileURLToPath} from 'node:url';
-const common=readFileSync(new URL('./interface.js',import.meta.url),'utf8');
-for(const mod of ['estilo']){
-  const specific=readFileSync(new URL('./'+mod+'.js',import.meta.url),'utf8');
-  const path=new URL('../cliente/main.js',import.meta.url);
-  writeFileSync(path,'/* Gerado por ferramentas/build.mjs. Sem dependências. */\n(()=>{\n"use strict";\n'+common+'\n'+specific+'\n})();\n');
-  console.log(fileURLToPath(path));
-}
+import { readFileSync, writeFileSync } from 'node:fs';
+const fontes = ['interface.js', 'estilo.js'];
+const codigo = fontes.map(nome => readFileSync(new URL(nome, import.meta.url), 'utf8')).join('\n');
+writeFileSync(new URL('../cliente/main.js', import.meta.url), '/* Gerado por ferramentas/build.mjs. API 3. */\n(() => {\n"use strict";\n' + codigo + '\n})();\n');
