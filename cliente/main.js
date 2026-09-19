@@ -49,14 +49,32 @@ function interfaceMod(id, titulo, intervalo = 4000) {
   // quadro.
   let canalAtual = null;
   let pintando = false;
+  let pendente = null;
 
+  /**
+   * Uma pintura de cada vez, e **nenhuma perdida**.
+   *
+   * Dois `regiao` em voo chegariam fora de ordem, e o desenho de trás apagaria
+   * o da frente — por isso a segunda espera. Mas a primeira versão **descartava**
+   * a segunda, e dois eventos seguidos (escolher a densidade e a fonte, no mesmo
+   * quadro) perdiam o desenho do segundo: a tela ficava mostrando a escolha
+   * anterior, e só o relógio a corrigia, quatro segundos depois.
+   *
+   * Guardar a última e pintá-la ao fim da que está em voo é o que resolve. É a
+   * mesma forma do aviso que chega durante uma colheita: o que não cabe agora
+   * não se joga fora, fica marcado.
+   */
   const desenhar = async partes => {
-    // Uma pintura de cada vez: dois `regiao` em voo chegariam fora de ordem, e
-    // o desenho de trás apagaria o da frente.
-    if (pintando) return;
+    if (pintando) { pendente = partes; return; }
     pintando = true;
     try {
-      await ui.regiao([cabecalho(titulo), ...partes]);
+      let atual = partes;
+      for (;;) {
+        pendente = null;
+        await ui.regiao([cabecalho(titulo), ...atual]);
+        if (!pendente) return;
+        atual = pendente;
+      }
     } finally {
       pintando = false;
     }
@@ -119,10 +137,13 @@ function interfaceMod(id, titulo, intervalo = 4000) {
 // dizendo que o resto «aguarda suporte do SEELE». A API 3 completa oferece seis
 // cores e a densidade, e quem administra edita e grava daqui.
 //
-// O que continua fora está escrito na emenda de 19/09 do ADR 0049, com a razão:
-// a família de tipo mexe na escala medida do produto, e arredondamento e brilho
-// não têm token. Eles são **preservados** no servidor — este MOD os devolve como
-// vieram, e não os zera por não saber editá-los.
+// A família de tipo entrou junto: ela é escolha entre as duas pilhas que o
+// produto declara, e não família livre — a escala de tipo daqui é medida, e uma
+// família qualquer moveria tamanho, entrelinha e contraste de uma vez.
+//
+// Arredondamento e brilho continuam sem token no produto. Eles são
+// **preservados** no servidor: este MOD os devolve como vieram, e não os zera
+// por não saber editá-los.
 
 const { texto, campo, escolha, botao, linha, request, iniciar } =
   interfaceMod('seele/estilo', 'ESTILO');
@@ -142,6 +163,11 @@ const DENSIDADES = [
   { valor: 'comfortable', dentro: 'CONFORTÁVEL' },
 ];
 
+const FONTES = [
+  { valor: 'mono', dentro: 'MONOESPAÇADA' },
+  { valor: 'sans', dentro: 'SEM SERIFA' },
+];
+
 /** O que o produto sabe aplicar, a partir do que o servidor guarda. */
 const paraOProduto = tema => ({
   fundo: tema.background,
@@ -151,6 +177,7 @@ const paraOProduto = tema => ({
   acento: tema.accent,
   borda: tema.border,
   densidade: tema.density === 'comfortable' ? 'confortavel' : 'compacta',
+  fonte: tema.font === 'sans' ? 'sans' : 'mono',
 });
 
 let aplicado = null;
@@ -192,6 +219,7 @@ function desenhoDoEstado() {
         : 'Tema compartilhado desativado. Aparência pessoal preservada.'),
       ...CORES.map(([chave, rotulo]) => texto(rotulo + ': ' + tema[chave])),
       texto('Densidade: ' + (tema.density === 'comfortable' ? 'confortável' : 'compacta')),
+      texto('Fonte: ' + (tema.font === 'sans' ? 'sem serifa' : 'monoespaçada')),
       texto('Revisão ' + ultimo.revision + ' · só quem administra o servidor edita.'),
     ];
   }
@@ -202,6 +230,7 @@ function desenhoDoEstado() {
       : 'Tema compartilhado desativado. Edite e grave para ligá-lo.'),
     ...CORES.map(([chave, rotulo]) => campo(chave, rotulo, tema[chave])),
     escolha('density', 'DENSIDADE', tema.density, DENSIDADES),
+    escolha('font', 'FONTE', tema.font, FONTES),
     linha([
       botao('gravar', mudou ? 'GRAVAR' : 'GRAVADO', !mudou),
       botao('descartar', 'DESCARTAR', !mudou),
