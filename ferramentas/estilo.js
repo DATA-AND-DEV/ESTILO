@@ -260,22 +260,18 @@ function aAmostraDaConversa(tema) {
 
 function aAbaDeCores(tema) {
   return [
-    caixa(['As seis cores que o SEELE usa. A amostra ao lado mostra como elas '
-      + 'se comportam juntas — é a relação entre elas que decide se a conversa '
-      + 'se lê.'], { corpo: 11, opacidade: 0.75 }),
-    caixa([
-      // A amostra separada saiu: o controle de cor do produto já traz a dele,
-      // do tamanho de uma amostra. Duas ao lado uma da outra eram a mesma
-      // informação duas vezes, e a de fora não respondia ao clique.
-      pilha(CORES.map(([chave, rotulo]) => cor(chave, rotulo, tema[chave])),
-        { intervalo: 12, crescer: 1, base: 0, larguraMinima: 260 }),
-      caixa([
-        caixa(['COMO FICA'], { corpo: 10, peso: 'forte', opacidade: 0.7 }),
-        aAmostraDaConversa(tema),
-      ], { intervalo: 8, crescer: 1, base: 0, larguraMinima: 280 }),
-    ], { direcao: 'linha', intervalo: 20, quebra: 'sim', alinhar: 'inicio' }),
+    caixa(['Seis cores, e o que decide se a conversa se lê é a relação entre '
+      + 'elas. A amostra acima responde a cada troca.'],
+    { corpo: 12, opacidade: 0.7, entrelinha: 1.45, larguraMaxima: 620 }),
+    // **Duas colunas.** Seis campos numa coluna só era uma lista que exigia
+    // rolar para ver a sexta cor — e a sexta é a borda, que muda a leitura de
+    // tudo. Em duas, as seis cabem no mesmo olhar, que é a densidade que
+    // `specs/07` pede.
+    grade(CORES.map(([chave, rotulo]) => cor(chave, rotulo, tema[chave])),
+      { colunas: 2, intervalo: 16 }),
   ];
 }
+
 
 function aAbaDeForma(tema) {
   return [
@@ -288,9 +284,6 @@ function aAbaDeForma(tema) {
       escolha('radius', 'ARREDONDAMENTO', String(tema.radius ?? 0), RAIOS),
       escolha('glow', 'BRILHO', tema.glow ? 'sim' : 'nao', BRILHOS),
     ], { colunas: 2, intervalo: 12 }),
-    separador(),
-    caixa(['COMO FICA'], { corpo: 10, peso: 'forte', opacidade: 0.7 }),
-    aAmostraDaConversa(tema),
   ];
 }
 
@@ -337,6 +330,25 @@ const CLASSES_DA_PAGINA = {
   },
 };
 
+/**
+ * Um título de grupo — o terceiro e último nível de tipo desta tela.
+ *
+ * Acima dele, a cartela do título da janela, que o produto monta; abaixo, o
+ * rótulo de campo, em mono apagado. O defeito da versão anterior era não ter
+ * este nível: cada rótulo tinha o mesmo peso, e a tela lia como uma lista de
+ * coisas iguais em vez de uma decisão com partes.
+ */
+function grupo(nome) {
+  return caixa([nome], {
+    familia: 'sans',
+    peso: 'forte',
+    corpo: 13,
+    espacamento: 1,
+    transformar: 'maiuscula',
+    cor: '#908574',
+  });
+}
+
 function aPagina() {
   if (!ultimo) return [texto('Consultando o tema do servidor…')];
   const tema = emEdicao();
@@ -356,17 +368,33 @@ function aPagina() {
   }
 
   return [
-    // **A prévia é dita antes de qualquer controle**, porque ela muda o que
-    // mexer nos controles significa: com ela ligada, o que você vê é só seu.
-    caixa([
-      interruptor('previa', 'PRÉVIA SÓ PARA MIM', previaLigada),
-      caixa([previaLigada
-        ? 'O que você escolher aparece só na sua sessão até publicar.'
-        : 'Você está vendo o tema publicado, e não o que está editando.'],
-      { corpo: 11, opacidade: 0.7, crescer: 1 }),
-      ...(mudou() ? [distintivo(['NÃO PUBLICADO'],
-        { borda: { largura: 1, cor: '#f2521f' }, cor: '#f2521f' })] : []),
-    ], { direcao: 'linha', alinhar: 'centro', intervalo: 10, quebra: 'sim' }),
+    // **A amostra abre a janela, em tamanho real.**
+    //
+    // A composição anterior punha os controles primeiro e a amostra numa
+    // coluna estreita à direita. Mas a pergunta que esta tela existe para
+    // responder é «como vai ficar» — e a resposta estava do tamanho de um
+    // detalhe, ao lado da ferramenta. Aqui ela é a primeira coisa, com a
+    // largura do diálogo, e os controles vêm abaixo servindo-a.
+    pilha([
+      caixa([
+        grupo('Como a conversa fica'),
+        ...(mudou() ? [distintivo(['NÃO PUBLICADO'],
+          { borda: { largura: 1, cor: '#f2521f' }, cor: '#f2521f', corpo: 10 })] : []),
+      ], { direcao: 'linha', alinhar: 'fim', distribuir: 'entre', intervalo: 12, quebra: 'sim' }),
+      aAmostraDaConversa(tema),
+      // **Prévia local e publicação, ditas juntas e embaixo da amostra.** As
+      // duas falam sobre o que se acabou de ver: uma diz quem está vendo
+      // isto agora, a outra é o botão que faz todo mundo ver.
+      caixa([
+        interruptor('previa', 'VER SÓ NA MINHA SESSÃO', previaLigada),
+        caixa([previaLigada
+          ? 'O que você escolher aparece só para você até publicar.'
+          : 'Você está vendo o tema publicado, e não o que está editando.'],
+        { corpo: 11, opacidade: 0.7, crescer: 1, base: 0, larguraMinima: 200 }),
+      ], { direcao: 'linha', alinhar: 'centro', intervalo: 10, quebra: 'sim' }),
+    ], { intervalo: 10 }),
+
+    separador(),
 
     // **Só o conteúdo da aba aberta atravessa a ponte.**
     //

@@ -253,6 +253,8 @@ function client(w, options = {}) {
     superficies,
     /** A última árvore que o MOD montou numa superfície. */
     superficie: chave => superficies.get(String(chave))?.arvores.at(-1) ?? null,
+    /** O nome que o produto escreve na cartela da janela. */
+    tituloDe: chave => superficies.get(String(chave))?.titulo ?? null,
     /** Os controles de uma superfície, pela chave — como `controles()` na região. */
     controlesDe: chave => {
       const achados = new Map();
