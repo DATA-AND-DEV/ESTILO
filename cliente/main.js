@@ -331,7 +331,7 @@ const {
   caixa, pilha, grade, separador, espaco,
   acoes, abas, aba, cor, deslizante, interruptor, distintivo,
   request, iniciar, temSuperficies, temContribuicoes,
-  pagina, contribuir, entrada, avisar,
+  dialogo, contribuir, entrada, avisar,
 } = interfaceMod('seele/estilo', 'ESTILO');
 
 /** As seis cores, na ordem em que fazem sentido de cima para baixo. */
@@ -571,15 +571,16 @@ function aAbaDeCores(tema) {
       + 'se comportam juntas — é a relação entre elas que decide se a conversa '
       + 'se lê.'], { corpo: 11, opacidade: 0.75 }),
     caixa([
-      pilha(CORES.map(([chave, rotulo]) => caixa([
-        amostraDeCor(tema[chave]),
-        caixa([cor(chave, rotulo, tema[chave])], { crescer: 1 }),
-      ], { direcao: 'linha', alinhar: 'centro', intervalo: 8 })), { intervalo: 10, crescer: 1 }),
+      // A amostra separada saiu: o controle de cor do produto já traz a dele,
+      // do tamanho de uma amostra. Duas ao lado uma da outra eram a mesma
+      // informação duas vezes, e a de fora não respondia ao clique.
+      pilha(CORES.map(([chave, rotulo]) => cor(chave, rotulo, tema[chave])),
+        { intervalo: 12, crescer: 1, base: 0, larguraMinima: 260 }),
       caixa([
         caixa(['COMO FICA'], { corpo: 10, peso: 'forte', opacidade: 0.7 }),
         aAmostraDaConversa(tema),
-      ], { intervalo: 8, crescer: 1, larguraMinima: 240 }),
-    ], { direcao: 'linha', intervalo: 20, quebra: 'sim' }, { classe: 'duas-colunas' }),
+      ], { intervalo: 8, crescer: 1, base: 0, larguraMinima: 280 }),
+    ], { direcao: 'linha', intervalo: 20, quebra: 'sim', alinhar: 'inicio' }),
   ];
 }
 
@@ -805,7 +806,20 @@ function aFaixaAntiga() {
 
 async function abrirAparencia() {
   if (!temSuperficies) return;
-  tela ??= await pagina('estilo-aparencia', 'Aparência do servidor');
+  // **Um diálogo amplo, e não uma página.**
+  //
+  // A versão de `0fba9a5` era um `<dialog>` de `min(920px, 100vw-32px)`, e a
+  // troca por página custou o que o reteste de `c4fe3ea` mediu: o editor
+  // passou a dividir a coluna da conversa, e as amostras ficaram num corredor
+  // estreito. Escolher tema é uma tarefa curta e focada — a pessoa abre,
+  // escolhe, publica e volta —, e é exatamente para isso que um modal serve.
+  //
+  // A página continua existindo na API para o que é atividade longa: a mesa do
+  // MESA é uma, e ela fica.
+  tela ??= await dialogo('estilo-aparencia', 'Aparência do servidor', {
+    tamanho: { largura: 980 },
+    fecharComAlteracoes: 'confirmar',
+  });
   await tela.classes(CLASSES_DA_PAGINA);
   await tela.montar(aPagina());
   await tela.suja(mudou());
