@@ -66,12 +66,37 @@ const paraOProduto = tema => ({
 });
 
 let aplicado = null;
+/**
+ * O que o produto fez com o último tema entregue — e não o que este lado supõe.
+ *
+ * `{ quando, valores, erro }`. `erro` vazio quer dizer que a API aceitou tudo
+ * o que foi mandado; com texto, é a recusa dela, pelo nome que ela deu.
+ *
+ * Existe porque a versão anterior **afirmava** a recusa sem perguntar: havia
+ * uma frase fixa dizendo que «a API de tema recusa» raio e sombra, escrita
+ * quando era verdade e mantida depois de deixar de ser. Ela reapareceu na
+ * auditoria de 20/09/2026 logo depois de a pessoa gravar arredondamento 8 e o
+ * produto tê-lo aplicado.
+ *
+ * Duas descrições concorrentes do mesmo recurso produzem exatamente isso. A
+ * que fica é a que vem do resultado.
+ */
+let ultimaAplicacao = null;
+
 async function aplicar(valores) {
   const assinatura = JSON.stringify(valores);
   if (assinatura === aplicado) return;
-  // Só confirme o estado depois que o produto aceitar cores, posse e contraste.
-  await SeeleUI.tema(valores);
-  aplicado = assinatura;
+  try {
+    // Só confirme o estado depois que o produto aceitar cores, posse e contraste.
+    await SeeleUI.tema(valores);
+    aplicado = assinatura;
+    ultimaAplicacao = { valores, erro: '' };
+  } catch (falha) {
+    // **A recusa não vira silêncio nem chute.** `aplicado` continua sendo o que
+    // está de pé de verdade, para a próxima tentativa não se achar redundante.
+    ultimaAplicacao = { valores, erro: falha?.message || String(falha) };
+    throw falha;
+  }
 }
 
 /**
@@ -108,6 +133,7 @@ function desenhoDoEstado() {
       texto('Arredondamento: ' + (tema.radius ? tema.radius + ' px' : 'reto')),
       texto('Brilho: ' + (tema.glow ? 'ligado' : 'desligado')),
       texto('Revisão ' + ultimo.revision + ' · só quem administra o servidor edita.'),
+      ...oResultadoDaAplicacao(),
     ];
   }
 
@@ -126,33 +152,38 @@ function desenhoDoEstado() {
       botao('restaurar', 'RESTAURAR PADRÃO'),
     ]),
     texto(aviso || ('Revisão ' + ultimo.revision)),
-    ...oQueEstaGuardadoENaoSeAplica(),
+    ...oResultadoDaAplicacao(),
   ];
 }
 
 /**
- * O que está salvo neste servidor e **este produto não aplica**.
+ * O que o produto **fez** com o último tema entregue.
  *
- * Só aparece quando há algo salvo: é uma frase sobre os dados de quem está
- * aqui, e não um aviso de indisponibilidade. A marca deste produto proíbe raio
- * e sombra — «nunca», na letra dela —, e a API de tema recusa os dois pelo
- * nome. Quem salvou um raio noutro tempo merece saber que ele está guardado e
- * não desenhado, em vez de achar que o tema dele não pegou.
+ * Substitui a frase que afirmava uma recusa sem tê-la observado. Ou a API
+ * aceitou — e então esta linha diz o que está desenhado agora, incluindo raio
+ * e brilho, que ela aplica desde que `NUMEROS_DA_API` e `BANDEIRAS_DA_API`
+ * existem — ou ela recusou, e então esta linha traz o motivo dela, com o que
+ * ficou de pé no lugar.
  *
- * Perguntar ao produto por tentativa seria pior: pedir para descobrir a recusa
- * aplica um tema de mentira no caminho.
+ * Nenhum dos dois é adivinhado: os dois saem de `ultimaAplicacao`.
  */
-function oQueEstaGuardadoENaoSeAplica() {
-  const tema = ultimo?.theme;
-  if (!tema) return [];
-  const guardados = [];
-  if (tema.radius) guardados.push('arredondamento ' + tema.radius);
-  if (tema.glow) guardados.push('brilho');
-  if (!guardados.length) return [];
-  return [texto(
-    'Guardado neste servidor e não desenhado aqui: ' + guardados.join(', ')
-    + '. A marca do SEELE não tem raio nem sombra, e a API de tema recusa os dois.'
-  )];
+function oResultadoDaAplicacao() {
+  if (!ultimaAplicacao) return [];
+  const { valores, erro } = ultimaAplicacao;
+  if (erro) {
+    return [texto('O produto recusou parte do tema: ' + erro
+      + '. O que estava desenhado antes continua de pé.')];
+  }
+  if (!valores || Object.keys(valores).length === 0) {
+    return [texto('Nesta sessão: aparência padrão do SEELE.')];
+  }
+  const partes = [];
+  if (valores.arredondamento) partes.push('arredondamento ' + valores.arredondamento + ' px');
+  else partes.push('cantos retos');
+  partes.push(valores.brilho ? 'com brilho' : 'sem brilho');
+  partes.push(valores.densidade === 'confortavel' ? 'densidade confortável' : 'densidade compacta');
+  partes.push(valores.fonte === 'sans' ? 'sem serifa' : 'monoespaçada');
+  return [texto('Desenhado nesta sessão: ' + partes.join(' · ') + '.')];
 }
 
 async function gravar(canal) {
