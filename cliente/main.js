@@ -575,7 +575,7 @@ function aAbaDeCores(tema) {
     // tudo. Em duas, as seis cabem no mesmo olhar, que é a densidade que
     // `specs/07` pede.
     grade(CORES.map(([chave, rotulo]) => cor(chave, rotulo, tema[chave])),
-      { colunas: 2, intervalo: 16 }),
+      { colunas: 2, intervalo: 20 }),
   ];
 }
 
@@ -590,7 +590,7 @@ function aAbaDeForma(tema) {
       escolha('font', 'FONTE', tema.font, FONTES),
       escolha('radius', 'ARREDONDAMENTO', String(tema.radius ?? 0), RAIOS),
       escolha('glow', 'BRILHO', tema.glow ? 'sim' : 'nao', BRILHOS),
-    ], { colunas: 2, intervalo: 12 }),
+    ], { colunas: 2, intervalo: 20 }),
   ];
 }
 
@@ -698,8 +698,8 @@ function aPagina() {
           ? 'O que você escolher aparece só para você até publicar.'
           : 'Você está vendo o tema publicado, e não o que está editando.'],
         { corpo: 11, opacidade: 0.7, crescer: 1, base: 0, larguraMinima: 200 }),
-      ], { direcao: 'linha', alinhar: 'centro', intervalo: 10, quebra: 'sim' }),
-    ], { intervalo: 10 }),
+      ], { direcao: 'linha', alinhar: 'centro', intervalo: 12, quebra: 'sim' }),
+    ], { intervalo: 14 }),
 
     separador(),
 
