@@ -367,10 +367,25 @@ function aPagina() {
         { borda: { largura: 1, cor: '#f2521f' }, cor: '#f2521f' })] : []),
     ], { direcao: 'linha', alinhar: 'centro', intervalo: 10, quebra: 'sim' }),
 
+    // **Só o conteúdo da aba aberta atravessa a ponte.**
+    //
+    // As três montadas de uma vez davam 14.164 bytes num `superficie-montar`,
+    // e o teto por mensagem é 12.288: a validação nativa de 20/09/2026 viu a
+    // página nascer vazia com `fila-cheia` na tela. Não era saturação — era
+    // uma mensagem que não cabia, e nenhuma delas caberia sozinha se as três
+    // fossem juntas.
+    //
+    // As tiras continuam completas: o produto monta os rótulos a partir de
+    // `chave`/`rotulo`, e **só desenha o painel escolhido** de qualquer forma
+    // (ver `atualizarAbas` no renderer). Mandar o conteúdo das outras duas era
+    // pagar a ponte por algo que nem seria montado.
+    //
+    // Trocar de aba emite `aba`, que redesenha com a nova aberta — o mesmo
+    // caminho de sempre, e a ida à ponte que ele custa é a que já existia.
     abas('aba', abaAberta, [
-      aba('cores', 'CORES', aAbaDeCores(tema)),
-      aba('forma', 'FORMA', aAbaDeForma(tema)),
-      aba('presets', 'CONJUNTOS', aAbaDePresets(tema)),
+      aba('cores', 'CORES', abaAberta === 'cores' ? aAbaDeCores(tema) : []),
+      aba('forma', 'FORMA', abaAberta === 'forma' ? aAbaDeForma(tema) : []),
+      aba('presets', 'CONJUNTOS', abaAberta === 'presets' ? aAbaDePresets(tema) : []),
     ]),
 
     ...(aviso ? [caixa([aviso], { corpo: 11, cor: '#f2521f' })] : []),
