@@ -127,6 +127,25 @@ function interfaceMod(id, titulo, intervalo = 4000) {
     }
   };
 
+  /** Uma atualização em voo e apenas o estado mais recente aguardando. */
+  function agruparAtualizacoes(atualizar) {
+    let emVoo = null;
+    let proxima = null;
+    return (...args) => {
+      proxima = args;
+      if (!emVoo) {
+        emVoo = Promise.resolve().then(async () => {
+          while (proxima) {
+            const atuais = proxima;
+            proxima = null;
+            await atualizar(...atuais);
+          }
+        }).finally(() => { emVoo = null; });
+      }
+      return emVoo;
+    };
+  }
+
   // ---- as superfícies ----
   //
   // **Ausente, e não recusado.** Quando o pacote declara `api: 3`, o prelúdio
@@ -290,7 +309,7 @@ function interfaceMod(id, titulo, intervalo = 4000) {
   return {
     // API 3
     texto, cabecalho, lista, campo, escolha, botao, linha, arquivo, midia,
-    request, iniciar, desenhar, dizer,
+    request, iniciar, desenhar, dizer, agruparAtualizacoes,
     // API 4 — composição
     caixa, pilha, grade, rolagem, separador, espaco,
     // API 4 — controle
@@ -331,7 +350,7 @@ const {
   caixa, pilha, grade, separador, espaco,
   acoes, abas, aba, cor, deslizante, interruptor, distintivo,
   request, iniciar, temSuperficies, temContribuicoes,
-  dialogo, contribuir, entrada, avisar,
+  dialogo, contribuir, entrada, avisar, agruparAtualizacoes,
 } = interfaceMod('seele/estilo', 'ESTILO');
 
 /** As seis cores, na ordem em que fazem sentido de cima para baixo. */
@@ -516,7 +535,7 @@ const amostraDeCor = (valor, tamanho = 28) => caixa([], {
   altura: tamanho,
   fundo: valor,
   borda: { largura: 1, cor: '#ffffff33' },
-  raio: 4,
+  raio: 0,
 });
 
 /**
@@ -529,7 +548,7 @@ const amostraDeCor = (valor, tamanho = 28) => caixa([], {
 function aAmostraDaConversa(tema) {
   return caixa([
     caixa([
-      caixa([], { largura: 24, altura: 24, raio: 999, fundo: tema.accent }),
+      caixa([], { largura: 24, altura: 24, raio: 0, fundo: tema.accent }),
       pilha([
         caixa(['Alguém'], { cor: tema.accent, peso: 'forte', corpo: 12 }),
         caixa(['Assim fica uma mensagem neste servidor.'], { cor: tema.text, corpo: 12 }),
@@ -613,7 +632,7 @@ function aAbaDePresets(tema) {
       intervalo: 8,
       preenchimento: 12,
       borda: { largura: 1, cor: '#3a322a' },
-      raio: 6,
+      raio: 0,
     })), { colunas: 3, intervalo: 12 }, { classe: 'presets' }),
   ];
 }
@@ -854,13 +873,13 @@ async function abrirAparencia() {
   await tela.mostrar();
 }
 
-async function repintarTudo(repintar) {
+const repintarTudo = agruparAtualizacoes(async (repintar) => {
   repintar(aRegiao());
   if (tela) {
     await tela.montar(aPagina());
     await tela.suja(mudou());
   }
-}
+});
 
 async function gravar(canal) {
   const tema = emEdicao();
