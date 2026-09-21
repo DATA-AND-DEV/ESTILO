@@ -1874,10 +1874,10 @@ if (manifest.id === 'seele/estilo') {
     // A pessoa 2 não é administradora neste mundo.
     const c = client(w, { request: (_id, canal, corpo) => w.call(corpo, '2', canal) });
     await settle();
-    // A entrada diz «ver» e não «editar»: quem não administra é convidado a
-    // olhar, e o rótulo não promete o que a página não vai oferecer.
+    // O tema é aplicado, mas sua entrada não ocupa a barra de quem não edita.
     assert.equal(c.regions.length, 0, 'o pacote de API 4 voltou a pintar a faixa permanente');
     assert.equal(c.entradas()[0].rotulo, 'Aparência do servidor');
+    assert.equal(c.entradas()[0].listarNaBarra, false);
 
     await abrir(c);
     const controles = naPagina(c);

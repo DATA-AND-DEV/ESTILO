@@ -350,7 +350,7 @@ const {
   caixa, pilha, grade, separador, espaco,
   acoes, abas, aba, cor, deslizante, interruptor, distintivo,
   request, iniciar, temSuperficies, temContribuicoes,
-  dialogo, contribuir, entrada, avisar, agruparAtualizacoes,
+  dialogo, contribuir, entrada, revogar, avisar, agruparAtualizacoes,
 } = interfaceMod('seele/estilo', 'ESTILO');
 
 /** As seis cores, na ordem em que fazem sentido de cima para baixo. */
@@ -495,6 +495,7 @@ let abaAberta = 'cores';
 /** O punho da página, e o handle da entrada de navegação. */
 let tela = null;
 let entradaRegistrada = false;
+let entradaPodeEditar = false;
 
 /** O tema que a tela mostra: o rascunho, se há um; senão, o do servidor. */
 const emEdicao = () => rascunho ?? ultimo?.theme ?? null;
@@ -909,10 +910,14 @@ iniciar(
     const estado = await request(canal, { op: 'view' });
     ultimo = estado;
     await aplicar(temaDaSessao());
+    if (entradaRegistrada && entradaPodeEditar !== (estado.canEdit === true)) {
+      await revogar(entradaRegistrada.handle);
+      entradaRegistrada = false;
+    }
     if (temContribuicoes && !entradaRegistrada) {
       try {
-        await entrada('Aparência do servidor', 'abrir-aparencia');
-        entradaRegistrada = true;
+        entradaRegistrada = await entrada('Aparência do servidor', 'abrir-aparencia', { listarNaBarra: estado.canEdit === true });
+        entradaPodeEditar = estado.canEdit === true;
       } catch (erro) {
         console.warn('ESTILO: a entrada foi recusada: ' + (erro.message || erro));
       }
@@ -998,7 +1003,7 @@ iniciar(
     return feito?.then(
       async () => {
         await repintarTudo(repintar);
-        if (evento.chave === 'gravar') await avisar('Aparência publicada.');
+
       },
       async erro => {
         aviso = erro.message || String(erro);
