@@ -51,7 +51,9 @@ function client(w, options = {}) {
   const escolhidos = new Map(), soltos = [];
   const snapshot = { me: 2, open_channel: 1, channels: [{ id: 1 }], presentes: [{ id: 1, nickname: 'Alex' }, { id: 2, nickname: 'Lia' }] };
   const sandbox = vm.createContext({
-    console: { error: e => errors.push(e) },
+    // **O executor nativo só ganhou `console` na v0.15.1 do SEELE**, e a
+    // API 4 existe desde a v0.13.0 — `semConsole` é o executor de antes.
+    ...(options.semConsole ? {} : { console: { error: e => errors.push(e) } }),
     setTimeout: (fn, ms) => { if (ms === 150) { void Promise.resolve().then(fn); } else timers.push(fn); },
     SeeleMods: {
       snapshot: async () => structuredClone(snapshot),
@@ -62,7 +64,11 @@ function client(w, options = {}) {
       },
     },
     SeeleUI: {
-      regiao: async tree => { checkTree(tree); cabeNaPonte('regiao', { conteudo: tree }); regions.push(structuredClone(tree)); },
+      regiao: async tree => {
+        checkTree(tree); cabeNaPonte('regiao', { conteudo: tree });
+        if (options.recusarRegiao?.()) throw new Error('a região recusou neste teste');
+        regions.push(structuredClone(tree));
+      },
       tema: async values => { if (options.tema) await options.tema(values); themes.push(structuredClone(values)); },
       // A API 3 completa: a janela fala com o MOD sem que ele tenha perguntado.
       // Um só ouvinte, e o último vence — é o que o produto oferece.
@@ -151,6 +157,10 @@ function client(w, options = {}) {
       // existem — que é o que o produto também responde.
       contribuicoes: {
         registrar: async pedido => {
+          // A recusa que o produto pode dar e que este mundo não reproduz
+          // sozinho — o teto, um ponto que o build não tem —, para um caso
+          // provar que o MOD a diz em vez de engoli-la.
+          if (options.registrar) await options.registrar(pedido);
           const PONTOS = {
             'pessoa.identidade': ['substituir', 'decorar'],
             'pessoa.cartao': ['substituir', 'adicionar'],
@@ -246,6 +256,10 @@ function client(w, options = {}) {
     delete sandbox.SeeleUI.superficies;
     delete sandbox.SeeleUI.contribuicoes;
   }
+  // O V8 põe um `console` próprio em todo contexto do `vm`; o QuickJS do
+  // executor antes da v0.15.1 não tinha nenhum. Apagá-lo é o que faz
+  // `console.error` virar o `ReferenceError` que lá ele vira.
+  if (options.semConsole) vm.runInContext('delete globalThis.console', sandbox);
   vm.runInContext(source, sandbox, { timeout: 1000 });
   return {
     regions, themes, requests, timers, errors, snapshot, avisos, contribuicoes,
@@ -1635,6 +1649,9 @@ if (manifest.id === 'seele/estilo') {
 
   test('ESTILO: quem administra edita e publica, e o que o MOD não edita é preservado', async () => {
     const w = world(); const inicial = w.call({ op: 'view' });
+    // Um tema já publicado: com ele desligado, publicar sem mudar nada liga o
+    // tema, e PUBLICAR começa disponível (ver «com o tema desligado»).
+    w.escritaDireta({ op: 'save', theme: inicial.theme, revision: 0 });
     // `world()` faz a pessoa 1 ser administradora, e o cliente entra como 2.
     const c = client(w, { request: (_id, canal, corpo) => w.call(corpo, '1', canal) });
     await settle();
@@ -1898,5 +1915,239 @@ if (manifest.id === 'seele/estilo') {
       'o MOD falhou num SEELE sem superfícies: ' + JSON.stringify(c.errors));
     assert.ok(c.controles().has('accent'), 'a faixa não voltou a oferecer as cores');
     assert.equal(c.contribuicoes.length, 0, 'registrou contribuição num SEELE que não as tem');
+  });
+
+
+  // ---- os consertos da 3.1.1 ----
+
+  // **O produto diz «será perdido», e é o MOD quem perde.** Com alterações, a
+  // saída do diálogo pergunta FECHAR SEM GRAVAR? com as palavras do produto:
+  // «O que você escreveu em "Aparência do servidor" e não gravou será
+  // perdido». DESCARTAR E FECHAR chega como `fechar` com `descartou`. A 3.1.0
+  // ignorava o evento: o rascunho continuava aplicado na sessão de quem edita,
+  // sem o selo NÃO PUBLICADO, que morava no diálogo fechado — e voltava ao
+  // reabrir.
+  test('ESTILO: DESCARTAR E FECHAR descarta de verdade', async () => {
+    const w = world(); const inicial = w.call({ op: 'view' });
+    w.escritaDireta({ op: 'save', theme: inicial.theme, revision: 0 });
+    const c = client(w, { request: (_id, canal, corpo) => w.call(corpo, '1', canal) });
+    await settle();
+    await abrir(c);
+    c.fire({ nome: 'cor', chave: 'accent', valor: '#6bffb6' });
+    await assentar();
+    assert.equal(c.themes.at(-1).acento, '#6bffb6');
+    c.fire({ nome: 'fechar-pedido', superficie: 'estilo-aparencia', porque: 'sair', temAlteracoes: true });
+    c.fire({ nome: 'fechar', superficie: 'estilo-aparencia', porque: 'sair', descartou: true });
+    await assentar();
+    assert.equal(c.themes.at(-1).acento, inicial.theme.accent,
+      'a prévia do que foi descartado continuou aplicada na sessão');
+    await abrir(c);
+    assert.equal(naPagina(c).get('accent').valor, inicial.theme.accent,
+      'reabrir trouxe de volta o que o produto disse que seria perdido');
+    assert.equal(naPagina(c).get('gravar').desligado, true);
+  });
+
+
+  // **A revisão protegia contra a edição concorrente, e a consulta a
+  // desarmava.** O servidor recusa uma gravação com revisão velha. Mas a
+  // consulta de quatro segundos trocava `ultimo` — e com ele a revisão —
+  // debaixo do rascunho, e o rascunho era uma cópia **inteira** do tema de
+  // quando a edição começou. Publicar mandava a revisão nova com os valores
+  // velhos: o que outra pessoa tinha publicado nos campos que esta nem tocou
+  // voltava atrás, e ninguém era avisado.
+  test('ESTILO: publicar não desfaz o que outra pessoa publicou durante a edição', async () => {
+    const w = world(); const inicial = w.call({ op: 'view' });
+    const c = client(w, { request: (_id, canal, corpo) => w.call(corpo, '1', canal) });
+    await settle();
+    await abrir(c);
+    c.fire({ nome: 'cor', chave: 'accent', valor: '#6bffb6' });
+    await assentar();
+    // Outra pessoa que administra publica outra borda, de outro computador.
+    assert.equal(w.call({ op: 'save', revision: 0, theme: { ...inicial.theme, border: '#123456' } }).ok, true);
+    c.tick(); await assentar();
+    // Quem está editando vê a borda nova, e o próprio destaque continua lá.
+    assert.equal(naPagina(c).get('border').valor, '#123456',
+      'a página não mostrou o que a outra pessoa publicou');
+    assert.equal(naPagina(c).get('accent').valor, '#6bffb6');
+    assert.match(oQueAPaginaDiz(c), /[Oo]utra pessoa publicou/);
+    c.fire({ nome: 'botao', chave: 'gravar' });
+    await assentar(20);
+    const agora = w.call({ op: 'view' }).theme;
+    assert.equal(agora.accent, '#6bffb6');
+    assert.equal(agora.border, '#123456', 'publicar desfez a borda que outra pessoa publicou');
+  });
+
+
+  // **Esquecer um handle não revoga a contribuição.** Sem canal, a 3.1.0
+  // zerava `entradaRegistrada` e deixava a entrada de pé no produto; com o
+  // canal de volta, registrava outra. O registro de contribuições não junta
+  // duas iguais, e a navegação ficava com duas «Aparência do servidor».
+  test('ESTILO: o canal que some e volta não duplica a entrada', async () => {
+    const w = world();
+    const c = client(w, { request: (_id, canal, corpo) => w.call(corpo, '1', canal) });
+    await settle();
+    assert.equal(c.entradas().length, 1);
+    c.snapshot.channels = []; c.snapshot.open_channel = null; c.tick(); await assentar();
+    c.snapshot.channels = [{ id: 1 }]; c.snapshot.open_channel = 1; c.tick(); await assentar();
+    assert.equal(c.entradas().length, 1, 'duas entradas «Aparência do servidor» na navegação');
+  });
+
+
+  // **O conjunto «SEELE» precisa ser o SEELE.** O padrão do servidor — e o
+  // conjunto com o nome do produto — tinha borda `#3a322a` e densidade
+  // compacta. O produto abre com `--seele-linha: #241F19` e células de
+  // 8 × 16 px (`apps/seele-app/ui/tokens.css`), que é a densidade
+  // `confortavel` de `MEDIDAS_DA_API` em `base.js`. Quem mudava só o destaque
+  // via, na prévia e depois de publicar, as linhas e o espaçamento da sessão
+  // mudarem junto, sem ter escolhido nenhum dos dois.
+  test('ESTILO: mudar só o destaque muda só o destaque', async () => {
+    const w = world();
+    const c = client(w, { request: (_id, canal, corpo) => w.call(corpo, '1', canal) });
+    await settle();
+    await abrir(c);
+    c.fire({ nome: 'cor', chave: 'accent', valor: '#6bffb6' });
+    await assentar();
+    assert.deepEqual(c.themes.at(-1), {
+      // Os valores de `tokens.css`, em minúsculas como o servidor os guarda.
+      fundo: '#050403', painel: '#0a0806', texto: '#eae3cf',
+      apagado: '#908574', acento: '#6bffb6', borda: '#241f19',
+      densidade: 'confortavel', fonte: 'mono', arredondamento: 0, brilho: false,
+    });
+    // E o conjunto «SEELE» é esse mesmo padrão: num servidor novo, ele já é o
+    // que está escolhido.
+    c.fire({ nome: 'botao', chave: 'descartar' });
+    c.fire({ nome: 'aba', chave: 'aba', valor: 'presets' });
+    await assentar();
+    assert.equal(naPagina(c).get('preset-seele')?.desligado, true,
+      'o conjunto «SEELE» difere do padrão com que o servidor começa');
+  });
+
+
+  // **A consulta de quatro segundos remontava o diálogo inteiro**, mudasse
+  // alguma coisa ou não, e mesmo com ele fechado: `tela` fica de pé depois da
+  // primeira abertura. Cada volta era um `superficie-montar` com a página
+  // inteira e um `superficie-suja`, para o produto refazer a mesma árvore.
+  test('ESTILO: a consulta sem novidade não remonta a página', async () => {
+    const w = world();
+    const c = client(w, { request: (_id, canal, corpo) => w.call(corpo, '1', canal) });
+    await settle();
+    await abrir(c);
+    const arvores = c.superficies.get('estilo-aparencia').arvores;
+    const antes = arvores.length;
+    const bytes = Buffer.byteLength(JSON.stringify(arvores.at(-1)));
+    for (let i = 0; i < 3; i += 1) { c.tick(); await assentar(); }
+    assert.equal(arvores.length, antes,
+      `três consultas sem mudança remontaram a página ${arvores.length - antes} vezes, `
+      + `${bytes} bytes cada`);
+    // E uma mudança de verdade continua chegando.
+    assert.equal(w.call({ op: 'save', revision: 0, theme: { ...w.call({ op: 'view' }).theme, accent: '#6bffb6' } }).ok, true);
+    c.tick(); await assentar();
+    assert.equal(naPagina(c).get('accent').valor, '#6bffb6', 'a mudança publicada não chegou à página');
+  });
+
+
+  // **Sem a entrada, quem administra não tem porta para o editor**, e a 3.1.0
+  // contava a recusa só ao `console.warn`. Até a v0.15.0 o executor não tem
+  // `console`: o `ReferenceError` saía do `catch`, abortava a consulta antes
+  // de o diálogo ser atualizado, e virava «Não foi possível atualizar: console
+  // is not defined». Na v0.15.1 a linha vai ao `seele.log` de quem hospeda, e
+  // quem está na janela continua sem saber por que a aparência não abre.
+  test('ESTILO: a entrada recusada é dita a quem está aqui, uma vez, e não depende de console', async () => {
+    const w = world();
+    let recusar = true;
+    const c = client(w, {
+      request: (_id, canal, corpo) => w.call(corpo, '1', canal),
+      registrar: async () => { if (recusar) throw new Error('um MOD mantém até 128 contribuições de pé'); },
+    });
+    await settle(); await assentar();
+    c.tick(); await assentar();
+    const ditos = c.avisos.filter(a => /128 contribuições/.test(a.mensagem));
+    assert.doesNotMatch(JSON.stringify(c.avisos), /console/,
+      'a recusa virou erro de console: ' + JSON.stringify(c.avisos));
+    assert.equal(ditos.length, 1, 'a recusa da entrada não foi dita uma vez: ' + JSON.stringify(c.avisos));
+    assert.equal(ditos[0].tom, 'erro');
+    // E quando o produto volta a aceitar, a entrada aparece.
+    recusar = false; c.tick(); await assentar();
+    assert.equal(c.entradas().length, 1);
+  });
+
+
+  // **Um clique a mais virava uma acusação falsa.** PUBLICAR ficava apertável
+  // enquanto o pedido ia ao servidor: o segundo clique saía com a mesma
+  // revisão, o servidor o recusava, e a página trocava «publicado» por «O tema
+  // mudou em outro computador. Recarregue antes de salvar.» — sobre uma
+  // publicação que tinha dado certo, feita por quem estava lendo.
+  test('ESTILO: dois cliques em PUBLICAR publicam uma vez, sem dizer que outra pessoa mudou', async () => {
+    const w = world();
+    const presos = [];
+    const c = client(w, {
+      request: (_id, canal, corpo) => corpo.op === 'save'
+        ? new Promise(r => presos.push(() => r(w.call(corpo, '1', canal))))
+        : w.call(corpo, '1', canal),
+    });
+    await settle();
+    await abrir(c);
+    c.fire({ nome: 'cor', chave: 'accent', valor: '#6bffb6' });
+    await assentar();
+    c.fire({ nome: 'botao', chave: 'gravar' });
+    await assentar();
+    // Enquanto o pedido está na rede, o botão diz que está trabalhando.
+    assert.equal(naPagina(c).get('gravar').emProgresso, true, 'PUBLICAR não mostrou o pedido em andamento');
+    c.fire({ nome: 'botao', chave: 'gravar' });
+    await assentar();
+    assert.equal(presos.length, 1, 'o segundo clique mandou outra gravação');
+    presos.forEach(soltar => soltar());
+    await assentar(20);
+    assert.equal(w.call({ op: 'view' }).revision, 1);
+    assert.doesNotMatch(oQueAPaginaDiz(c), /mudou em outro computador/);
+    assert.match(oQueAPaginaDiz(c), /publicado para todo mundo/);
+  });
+
+
+  // **«PUBLICADO» sobre um tema que ninguém vê.** Num servidor novo, e depois
+  // de RESTAURAR PADRÃO, o tema compartilhado está desligado. A página de
+  // quem administra dizia PUBLICADO, com o botão desligado, e nada nela dizia
+  // que o tema estava fora — só a de quem não administra dizia. E religar o
+  // tema guardado exigia mudar alguma coisa nele antes.
+  test('ESTILO: com o tema desligado, a página diz isso e PUBLICAR o liga', async () => {
+    const w = world();
+    const c = client(w, { request: (_id, canal, corpo) => w.call(corpo, '1', canal) });
+    await settle();
+    await abrir(c);
+    assert.equal(w.call({ op: 'view' }).enabled, false);
+    const gravar = naPagina(c).get('gravar');
+    assert.notEqual(gravar.dentro, 'PUBLICADO', 'a página diz PUBLICADO com o tema desligado');
+    assert.equal(gravar.desligado, false, 'não há como ligar o tema guardado sem mudá-lo');
+    assert.match(oQueAPaginaDiz(c), /tema compartilhado está desligado/);
+    c.fire({ nome: 'botao', chave: 'gravar' });
+    await assentar(20);
+    assert.equal(w.call({ op: 'view' }).enabled, true);
+    assert.equal(c.themes.at(-1).acento, w.call({ op: 'view' }).theme.accent);
+    assert.equal(naPagina(c).get('gravar').dentro, 'PUBLICADO');
+    assert.doesNotMatch(oQueAPaginaDiz(c), /tema compartilhado está desligado/);
+  });
+
+
+  // **O registro de erro não pode derrubar o que ele só queria contar.** Até a
+  // v0.15.0 o executor nativo não tem `console`. Quando a consulta falhava e
+  // dizer a falha também falhava, o `console.error` da casca lançava
+  // `ReferenceError` de dentro do `catch`, e a volta terminava numa promessa
+  // rejeitada, que aquela versão trata como falha do MOD. Na API 4 `dizer`
+  // engole a recusa do aviso; o caminho que chega lá é o da API 3, que a casca
+  // continua oferecendo aos três MODs.
+  test('ESTILO: sem console no executor, uma falha ao dizer a falha não derruba a volta', async () => {
+    const w = world();
+    let falhar = false;
+    const c = client(w, {
+      semApi4: true,
+      semConsole: true,
+      request: (_id, canal, corpo) => falhar ? Promise.reject(Error('timeout')) : w.call(corpo, '1', canal),
+      recusarRegiao: () => falhar,
+    });
+    await assentar();
+    falhar = true;
+    const volta = c.timers.shift()();
+    await assert.doesNotReject(volta, 'a volta terminou rejeitada');
+    assert.equal(c.timers.length, 1, 'a consulta parou de ser agendada');
   });
 }

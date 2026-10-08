@@ -1,4 +1,4 @@
-/* Gerado por ferramentas/build.mjs. API 3. */
+/* Gerado por ferramentas/build.mjs. API 4. */
 (() => {
 "use strict";
 // Executado exclusivamente no executor do MOD. Cada pacote inclui sua cópia.
@@ -79,6 +79,18 @@ function interfaceMod(id, titulo, intervalo = 4000) {
   const link = (chave, dentro, endereco) => ({ forma: 'link', chave, dentro: String(dentro), endereco });
   const arquivo = (chave, dentro, extra) => ({ forma: 'arquivo', chave, dentro: String(dentro), ...extra });
   const midia = (chave, extra) => ({ forma: 'midia', chave, ...extra });
+
+  /**
+   * Escreve no registro de quem hospeda, **quando há registro**.
+   *
+   * O `console` do executor nativo só existe a partir da v0.15.1 do SEELE, e
+   * a API 4 desde a v0.13.0. Nos apps do meio, um `console.error` num caminho
+   * de erro virava `ReferenceError` e derrubava justamente o que ele só queria
+   * contar.
+   */
+  const anotar = (nivel, mensagem) => {
+    try { globalThis.console?.[nivel]?.(mensagem); } catch { /* sem registro, não há a quem dizer */ }
+  };
 
   const canalDe = snapshot => {
     const id = snapshot.open_channel ?? snapshot.channels?.[0]?.id;
@@ -296,7 +308,7 @@ function interfaceMod(id, titulo, intervalo = 4000) {
         }
       } catch (erro) {
         try { await recado('Não foi possível atualizar: ' + (erro.message || String(erro)), 'erro'); }
-        catch (falha) { console.error(titulo + ': ' + (falha.message || String(falha))); }
+        catch (falha) { anotar('error', titulo + ': ' + (falha.message || String(falha))); }
       } finally {
         // Agenda depois de concluir: nunca sobrepõe consultas nem repete
         // escritas. O SEELE encerra o executor e seus temporizadores ao sair.
@@ -309,7 +321,7 @@ function interfaceMod(id, titulo, intervalo = 4000) {
   return {
     // API 3
     texto, cabecalho, lista, campo, escolha, botao, linha, arquivo, midia,
-    request, iniciar, desenhar, dizer, agruparAtualizacoes,
+    request, iniciar, desenhar, dizer, agruparAtualizacoes, anotar,
     // API 4 — composição
     caixa, pilha, grade, rolagem, separador, espaco,
     // API 4 — controle
@@ -349,7 +361,7 @@ const {
   texto, botao, escolha,
   caixa, pilha, grade, separador, espaco,
   acoes, abas, aba, cor, deslizante, interruptor, distintivo,
-  request, iniciar, temSuperficies, temContribuicoes,
+  request, iniciar, dizer, temSuperficies, temContribuicoes,
   dialogo, contribuir, entrada, revogar, avisar, agruparAtualizacoes,
 } = interfaceMod('seele/estilo', 'ESTILO');
 
@@ -393,10 +405,11 @@ const PRESETS = [
   {
     id: 'seele',
     nome: 'SEELE',
+    // O mesmo padrão do servidor, que é o com que o SEELE abre.
     tema: {
       background: '#050403', panel: '#0a0806', text: '#eae3cf',
-      muted: '#908574', accent: '#f2521f', border: '#3a322a',
-      density: 'compact', font: 'mono', radius: 0, glow: false,
+      muted: '#908574', accent: '#f2521f', border: '#241f19',
+      density: 'comfortable', font: 'mono', radius: 0, glow: false,
     },
   },
   {
@@ -496,6 +509,17 @@ let abaAberta = 'cores';
 let tela = null;
 let entradaRegistrada = false;
 let entradaPodeEditar = false;
+/** A última recusa da entrada que foi dita, para não repeti-la a cada volta. */
+let entradaRecusada = '';
+/**
+ * O pedido de escrita que está na rede — `'gravar'` ou `'restaurar'` —, ou nada.
+ *
+ * Um de cada vez. PUBLICAR ficava apertável enquanto o pedido ia ao servidor,
+ * e o segundo clique saía com a mesma revisão: o servidor o recusava, e a
+ * página trocava «publicado» por «O tema mudou em outro computador» sobre uma
+ * publicação que tinha dado certo.
+ */
+let escrevendo = '';
 
 /** O tema que a tela mostra: o rascunho, se há um; senão, o do servidor. */
 const emEdicao = () => rascunho ?? ultimo?.theme ?? null;
@@ -504,6 +528,26 @@ const mudou = () =>
   rascunho !== null && JSON.stringify(rascunho) !== JSON.stringify(ultimo?.theme);
 
 const podeEditar = () => ultimo?.canEdit === true;
+
+/**
+ * O rascunho levado para cima de uma revisão que outra pessoa publicou.
+ *
+ * O rascunho é o tema inteiro, e não só o que esta pessoa mudou: é ele que a
+ * tela mostra. Por isso, quando a revisão muda debaixo dele, cada campo que
+ * esta pessoa **não** tocou — o que ainda é igual à revisão de onde a edição
+ * partiu — passa a ser o da revisão nova. O que ela tocou continua dela.
+ *
+ * Sem isto, publicar mandava a revisão nova com os valores velhos, e o
+ * servidor, que confere a revisão justamente para não perder a escrita de
+ * ninguém, aceitava.
+ */
+function sobreARevisaoNova(meu, base, novo) {
+  const resultado = { ...novo };
+  for (const chave of Object.keys(meu)) {
+    if (meu[chave] !== base?.[chave]) resultado[chave] = meu[chave];
+  }
+  return resultado;
+}
 
 /**
  * O tema que **esta sessão** deve estar vendo agora.
@@ -694,6 +738,11 @@ function aPagina() {
     ];
   }
 
+  // **Publicar também é ligar.** Com o tema compartilhado desligado — servidor
+  // novo, ou depois de RESTAURAR PADRÃO —, o que está guardado não está em
+  // vigor, e dizer PUBLICADO sobre ele era dizer o contrário.
+  const publicavel = mudou() || !ultimo.enabled;
+
   return [
     // **A amostra abre a janela, em tamanho real.**
     //
@@ -719,6 +768,9 @@ function aPagina() {
           : 'Você está vendo o tema publicado, e não o que está editando.'],
         { corpo: 11, opacidade: 0.7, crescer: 1, base: 0, larguraMinima: 200 }),
       ], { direcao: 'linha', alinhar: 'centro', intervalo: 12, quebra: 'sim' }),
+      ...(ultimo.enabled ? [] : [caixa(['O tema compartilhado está desligado: quem entra vê a '
+        + 'aparência padrão do SEELE. Publicar liga este tema para todo mundo.'],
+      { corpo: 11, opacidade: 0.85 })]),
     ], { intervalo: 14 }),
 
     separador(),
@@ -748,11 +800,12 @@ function aPagina() {
     ...oResultadoDaAplicacao(),
 
     acoes([
-      botao('restaurar', 'RESTAURAR PADRÃO', false, { variante: 'discreta' }),
+      botao('restaurar', 'RESTAURAR PADRÃO', Boolean(escrevendo),
+        { variante: 'discreta', ...(escrevendo === 'restaurar' ? { emProgresso: true } : {}) }),
       espaco(),
-      botao('descartar', 'DESCARTAR', !mudou(), { variante: 'discreta' }),
-      botao('gravar', mudou() ? 'PUBLICAR PARA O SERVIDOR' : 'PUBLICADO', !mudou(),
-        { variante: 'primaria' }),
+      botao('descartar', 'DESCARTAR', !mudou() || Boolean(escrevendo), { variante: 'discreta' }),
+      botao('gravar', publicavel ? 'PUBLICAR PARA O SERVIDOR' : 'PUBLICADO', !publicavel || Boolean(escrevendo),
+        { variante: 'primaria', ...(escrevendo === 'gravar' ? { emProgresso: true } : {}) }),
     ], true),
   ];
 }
@@ -856,8 +909,8 @@ async function abrirAparencia() {
   if (!temSuperficies) return;
   // **Um diálogo amplo, e não uma página.**
   //
-  // A versão de `0fba9a5` era um `<dialog>` de `min(920px, 100vw-32px)`, e a
-  // troca por página custou o que o reteste de `c4fe3ea` mediu: o editor
+  // A 1.0.1 era um `<dialog>` de `min(920px, 100vw-32px)`, e a troca por
+  // página custou o que o reteste da janela de 20/09/2026 mediu: o editor
   // passou a dividir a coluna da conversa, e as amostras ficaram num corredor
   // estreito. Escolher tema é uma tarefa curta e focada — a pessoa abre,
   // escolhe, publica e volta —, e é exatamente para isso que um modal serve.
@@ -869,17 +922,43 @@ async function abrirAparencia() {
     fecharComAlteracoes: 'confirmar',
   });
   await tela.classes(CLASSES_DA_PAGINA);
-  await tela.montar(aPagina());
-  await tela.suja(mudou());
+  // Abrir monta sempre: é a única volta em que o produto pode não ter a árvore.
+  montado = null;
+  sujaMontada = null;
+  await montarAPagina();
   await tela.mostrar();
+}
+
+/**
+ * O que atravessou a ponte por último, para não mandar a mesma página de novo.
+ *
+ * A consulta de quatro em quatro segundos remontava o diálogo inteiro —
+ * 3.224 bytes na aba de cores — mudasse alguma coisa ou não, e mesmo fechado:
+ * `tela` continua de pé depois da primeira abertura. O produto refazia a
+ * mesma árvore a cada volta, debaixo de quem estava escolhendo uma cor.
+ */
+let montado = null;
+let sujaMontada = null;
+
+async function montarAPagina() {
+  const alvo = tela;
+  if (!alvo) return;
+  const arvore = aPagina();
+  const assinatura = JSON.stringify(arvore);
+  if (assinatura !== montado) {
+    await alvo.montar(arvore);
+    montado = assinatura;
+  }
+  const suja = mudou();
+  if (suja !== sujaMontada) {
+    await alvo.suja(suja);
+    sujaMontada = suja;
+  }
 }
 
 const repintarTudo = agruparAtualizacoes(async (repintar) => {
   repintar(aRegiao());
-  if (tela) {
-    await tela.montar(aPagina());
-    await tela.suja(mudou());
-  }
+  await montarAPagina();
 });
 
 async function gravar(canal) {
@@ -908,6 +987,13 @@ async function restaurar(canal) {
 iniciar(
   async (snapshot, canal) => {
     const estado = await request(canal, { op: 'view' });
+    // Só para a frente: uma resposta atrasada, de antes de esta pessoa
+    // publicar, não é outra pessoa publicando.
+    if (rascunho && ultimo && estado.revision > ultimo.revision) {
+      rascunho = sobreARevisaoNova(rascunho, ultimo.theme, estado.theme);
+      aviso = 'Outra pessoa publicou a revisão ' + estado.revision + ' enquanto você editava. '
+        + 'O que você não tinha mudado passou a ser o dela; o que você mudou continua seu.';
+    }
     ultimo = estado;
     await aplicar(temaDaSessao());
     if (entradaRegistrada && entradaPodeEditar !== (estado.canEdit === true)) {
@@ -918,25 +1004,53 @@ iniciar(
       try {
         entradaRegistrada = await entrada('Aparência do servidor', 'abrir-aparencia', { listarNaBarra: estado.canEdit === true });
         entradaPodeEditar = estado.canEdit === true;
+        entradaRecusada = '';
       } catch (erro) {
-        console.warn('ESTILO: a entrada foi recusada: ' + (erro.message || erro));
+        // **A porta recusada é dita a quem está aqui.** Sem ela, quem
+        // administra não tem como abrir o editor. A 3.1.0 a contava só ao
+        // `console`, que até a v0.15.0 não existe no executor — e o
+        // `ReferenceError` saía deste `catch`. Uma vez por motivo: a próxima
+        // volta tenta de novo, e repetir a frase a cada quatro segundos
+        // encheria a fila de avisos.
+        const motivo = erro?.message || String(erro);
+        if (motivo !== entradaRecusada) {
+          entradaRecusada = motivo;
+          void dizer('O SEELE recusou a entrada «Aparência do servidor»: ' + motivo, 'erro');
+        }
       }
     }
-    if (tela) {
-      await tela.montar(aPagina());
-      await tela.suja(mudou());
-    }
+    await montarAPagina();
     return aRegiao();
   },
-  () => {
+  async () => {
     tela = null;
-    entradaRegistrada = false;
-    return aplicar({});
+    montado = null;
+    sujaMontada = null;
+    await aplicar({});
+    // **Revogada, e não esquecida.** Zerar o handle deixava a entrada de pé
+    // no produto, e a volta do canal registrava uma segunda. Se revogar
+    // falhar, o handle fica, e a próxima volta tenta de novo.
+    if (entradaRegistrada) {
+      await revogar(entradaRegistrada.handle);
+      entradaRegistrada = false;
+    }
   },
   (evento, canal, repintar) => {
     if (evento.nome === 'acao') {
       if (evento.acao === 'abrir-aparencia') return abrirAparencia();
       return null;
+    }
+    // **DESCARTAR E FECHAR é a pessoa respondendo ao produto**, e o produto
+    // disse a ela que o que não foi publicado «será perdido». Guardar o
+    // rascunho aqui deixava a prévia aplicada na sessão sem o selo NÃO
+    // PUBLICADO, que mora no diálogo que acabou de fechar.
+    if (evento.nome === 'fechar' && evento.descartou === true
+      && evento.superficie === 'estilo-aparencia') {
+      rascunho = null;
+      aviso = '';
+      return aplicar(temaDaSessao())
+        .catch(erro => { aviso = erro.message || String(erro); })
+        .then(() => repintarTudo(repintar));
     }
     if (evento.nome === 'fechar' || evento.nome === 'fechar-pedido') return null;
 
@@ -995,21 +1109,26 @@ iniciar(
     }
 
     if (canal === null) return null;
-    const feito = evento.chave === 'gravar' ? gravar(canal)
-      : evento.chave === 'restaurar' ? restaurar(canal)
-        : null;
+    if (evento.chave !== 'gravar' && evento.chave !== 'restaurar') return null;
+    // O clique que chega com um pedido na rede é o mesmo gesto repetido, e
+    // não um pedido novo: o botão já está desligado na tela, e só não estava
+    // quando este evento saiu da janela.
+    if (escrevendo) return null;
+    escrevendo = evento.chave;
+    void repintarTudo(repintar);
+    const feito = (evento.chave === 'gravar' ? gravar(canal) : restaurar(canal))
+      .finally(() => { escrevendo = ''; });
     // A recusa do servidor — contraste, permissão, revisão trocada — vira a
     // linha de aviso desta página, e não um erro que ninguém lê.
-    return feito?.then(
+    return feito.then(
       async () => {
         await repintarTudo(repintar);
-
       },
       async erro => {
         aviso = erro.message || String(erro);
         await repintarTudo(repintar);
       },
-    ) ?? null;
+    );
   },
 );
 

@@ -46,4 +46,15 @@ test('Distribuição: manifestos e JavaScript válidos, pacote independente',()=
     new vm.Script(fs.readFileSync(path.join(dir,manifest.server),'utf8'));
   }
 });
+// O README vai no pacote publicado, e o catálogo o serve como está. Na 3.1.0
+// ele ainda dizia «2.0.0», «Requer API de MOD 3» e «aplica somente quatro
+// cores», e o cabeçalho do cliente gerado dizia «API 3».
+test('Distribuição: o README e o cliente gerado dizem a versão e a API do manifesto',()=>{
+  const dir=path.join(__dirname,'..'),manifest=JSON.parse(fs.readFileSync(path.join(dir,'mod.json')));
+  const readme=fs.readFileSync(path.join(dir,'README.md'),'utf8');
+  assert.ok(readme.split('\n')[0].endsWith('— '+manifest.version),'o título do README não diz a versão '+manifest.version+': '+readme.split('\n')[0]);
+  assert.ok(readme.includes('API de MOD '+manifest.api+'**'),'o README não diz a API '+manifest.api+' que o manifesto declara');
+  const cabecalho=fs.readFileSync(path.join(dir,manifest.client),'utf8').split('\n')[0];
+  assert.ok(cabecalho.includes('API '+manifest.api+'.'),'o cabeçalho do cliente gerado não diz a API '+manifest.api+': '+cabecalho);
+});
 module.exports={server};

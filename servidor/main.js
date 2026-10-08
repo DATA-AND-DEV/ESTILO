@@ -1,7 +1,9 @@
 /* SEELE Estilo 1.0.0 — API 2, sem dependências ou rede externa. */
 (() => {
   'use strict';
-  const defaults = { accent:'#f2521f', background:'#050403', panel:'#0a0806', text:'#eae3cf', muted:'#908574', border:'#3a322a', radius:0, density:'compact', font:'mono', glow:false };
+  // A aparência com que o SEELE abre (`tokens.css`): `--seele-linha` é #241f19, e
+  // as células de 8 × 16 px são a densidade `confortavel` da API de tema.
+  const defaults = { accent:'#f2521f', background:'#050403', panel:'#0a0806', text:'#eae3cf', muted:'#908574', border:'#241f19', radius:0, density:'comfortable', font:'mono', glow:false };
   const colorKeys = ['accent','background','panel','text','muted','border'];
   function fail(message) { throw new Error(message); }
   function luminance(hex) {
