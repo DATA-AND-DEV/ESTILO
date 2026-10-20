@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 function agrupar() {
-  const ctx = vm.createContext({ SeeleUI: {}, SeeleMods: {} });
+  const ctx = vm.createContext({ SeeleUI: { superficies: {}, contribuicoes: {} }, SeeleMods: {} });
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../ferramentas/interface.js'), 'utf8'), ctx);
   return ctx.interfaceMod('teste/visual', 'Teste').agruparAtualizacoes;
 }

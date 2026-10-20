@@ -1,14 +1,16 @@
 {
   "schema": 1,
   "id": "seele/estilo",
-  "version": "3.1.1",
-  "api": 4,
+  "version": "4.0.0",
+  "api": 6,
   "repo": "https://github.com/DATA-AND-DEV/ESTILO",
   "reach": [
-    "regiao",
-    "tema da sessao",
-    "tema do servidor"
+    "tema do servidor",
+    "dialogo de aparencia",
+    "entrada de navegacao",
+    "aviso do servidor"
   ],
+  "tema": true,
   "client": "cliente/main.js",
   "server": "servidor/main.js"
 }

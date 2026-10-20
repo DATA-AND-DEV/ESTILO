@@ -34,11 +34,13 @@ use std::rc::Rc;
 /// discorda no dia em que só uma sobe — e a que discordasse aqui faria este
 /// exercício provar um prelúdio que o produto não usa.
 fn preludio() -> Result<String, String> {
-    const FONTE: &str = include_str!("../../../../SEELE/apps/seele-app/src/executor.rs");
-    const MARCA: &str = "const PRELUDIO: &str = r#\"";
+    // Desde a API 6 o prelúdio mora no motor, que o desktop e o navegador
+    // dividem (`crates/seele-motor`), e não mais em `executor.rs`.
+    const FONTE: &str = include_str!("../../../../SEELE/crates/seele-motor/src/preludio.rs");
+    const MARCA: &str = "pub const PRELUDIO: &str = r#\"";
     let inicio = FONTE
         .find(MARCA)
-        .ok_or("`PRELUDIO` não foi encontrado em executor.rs")?;
+        .ok_or("`PRELUDIO` não foi encontrado em crates/seele-motor/src/preludio.rs")?;
     let resto = &FONTE[inicio + MARCA.len()..];
     let fim = resto.find("\"#;").ok_or("`PRELUDIO` não fecha")?;
     Ok(resto[..fim].to_owned())
@@ -62,7 +64,16 @@ fn servidor() -> Result<(), Box<dyn std::error::Error>> {
             ctx.eval::<(), _>(r#"
                 globalThis.dados = {};
                 const disk = {};
-                globalThis.mundo = { agora: () => 123 };
+                // O `mundo` da API 6: `mundo.tema` e `mundo.avisar` respondem
+                // como o servidor, com valor, e guardam o que receberam para o
+                // smoke conferir.
+                globalThis.__declarados = [];
+                globalThis.__avisos = [];
+                globalThis.mundo = {
+                    agora: () => 123,
+                    tema: v => { __declarados.push(v); return { ok: true }; },
+                    avisar: a => { __avisos.push(a); return { ok: true }; }
+                };
                 globalThis.arquivos = {
                     ler: p => disk[p] ?? null,
                     escrever: (p,v) => { disk[p]=v; return true; },
@@ -128,7 +139,11 @@ fn cliente() -> Result<(), Box<dyn std::error::Error>> {
             .get("api")
             .and_then(serde_json::Value::as_u64)
             .ok_or("o manifesto não declara `api`")?;
-        let capacidades = if api >= 4 {
+        // As da API 6 são as de `compatibilidade.capacidades-por-versao` no
+        // `api/v6.json`: sem `regiao` e sem `cartoes`, com `retrato`.
+        let capacidades = if api >= 6 {
+            r#"["superficies","contribuicoes","estilos","classes","volume","arquivo","tema","retrato","eventos-da-tela","aviso-do-servidor"]"#
+        } else if api >= 4 {
             r#"["regiao","tema","cartoes","arquivo","superficies","contribuicoes","estilos","classes"]"#
         } else {
             r#"["regiao","tema","cartoes","arquivo"]"#
@@ -168,15 +183,24 @@ fn cliente() -> Result<(), Box<dyn std::error::Error>> {
             .get("n")
             .and_then(serde_json::Value::as_u64)
             .ok_or("a primeira fala do MOD não tem número")?;
-        if pedido.get("tipo").and_then(serde_json::Value::as_str) != Some("snapshot") {
-            return Err(format!("o MOD começou por {primeiro}, e não por um retrato"));
+        // **Na API 6 o MOD começa pelo servidor dele**, e não por um retrato:
+        // o tema é do servidor, e o pedido vai no escopo de servidor (canal 0).
+        if pedido.get("tipo").and_then(serde_json::Value::as_str) != Some("pedido")
+            || pedido.get("canal").and_then(serde_json::Value::as_u64) != Some(0)
+            || pedido.pointer("/valor/op").and_then(serde_json::Value::as_str) != Some("view")
+        {
+            return Err(format!(
+                "o MOD começou por {primeiro}, e não pelo estado no escopo de servidor"
+            ));
         }
 
         let retrato = format!(
-            r#"{{"tipo":"resposta","n":{numero},"ok":true,"valor":{{
-                "me":1,"open_channel":1,"channels":[{{"id":1,"name":"geral"}}],
-                "presentes":[{{"id":1,"nickname":"Alex"}},{{"id":2,"nickname":"Lia"}}]
-            }}}}"#
+            r##"{{"tipo":"resposta","n":{numero},"ok":true,"valor":{{
+                "ok":true,"revision":0,"enabled":false,"canEdit":true,
+                "theme":{{"accent":"#f2521f","background":"#050403","panel":"#0a0806",
+                  "text":"#eae3cf","muted":"#908574","border":"#241f19","radius":0,
+                  "density":"comfortable","font":"mono","glow":false}}
+            }}}}"##
         );
         ctx.globals()
             .set("__resposta", retrato)
@@ -211,6 +235,13 @@ fn cliente() -> Result<(), Box<dyn std::error::Error>> {
             "o MOD não chegou a falar com o servidor dele: {tipos:?}"
         )
         .into());
+    }
+    // A entrada de navegação, depois do estado; e nada do que a API 6 tirou.
+    if !tipos.iter().any(|t| t == "contribuir") {
+        return Err(format!("o MOD não registrou a entrada: {tipos:?}").into());
+    }
+    if let Some(saiu) = tipos.iter().find(|t| ["snapshot", "regiao", "cartoes"].contains(&t.as_str())) {
+        return Err(format!("o MOD pediu «{saiu}», que a API 6 tirou: {tipos:?}").into());
     }
     println!(
         "QuickJS 0.12.2 / 8 MiB: o cliente sobe no prelúdio real, sem DOM e sem \
